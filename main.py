@@ -1,11 +1,13 @@
-from fastapi import FastAPI, Request
+import uvicorn
 from fastapi import FastAPI
 from dotenv import load_dotenv
-import uvicorn
-from routers import pipelines_get, pipelines_post, pipelines_put, pipelines_delete, blocks_get, blocks_post, blocks_put, blocks_delete
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
+from routers.kernels import kernels_get
 from starlette.responses import JSONResponse
 from statistics.csv_statistics import CSVLoader
+from fastapi.middleware.cors import CORSMiddleware
+from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
+from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
 
 load_dotenv()
 
@@ -40,6 +42,8 @@ app.include_router(blocks_post.router)
 app.include_router(blocks_put.router)
 
 app.include_router(blocks_delete.router)
+
+app.include_router(kernels_get.router)
 
 
 @app.get("/")

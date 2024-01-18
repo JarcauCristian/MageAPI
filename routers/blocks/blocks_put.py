@@ -11,7 +11,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.put("/block/update")
+@router.put("/block/update", tags=["BLOCKS PUT"])
 async def update_block(block: Block):
     if token.check_token_expired():
         token.update_token()

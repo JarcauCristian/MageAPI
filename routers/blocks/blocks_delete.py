@@ -10,7 +10,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.delete("/block/delete")
+@router.delete("/block/delete", tags=["BLOCKS DELETE"])
 async def delete_block(block: DeleteBlock):
     if token.check_token_expired():
         token.update_token()

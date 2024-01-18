@@ -14,7 +14,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post('/pipeline/create')
+@router.post('/pipeline/create', tags=["PIPELINES POST"])
 async def pipeline_create(name: str, ptype: str):
     if token.check_token_expired():
         token.update_token()
@@ -51,7 +51,7 @@ async def pipeline_create(name: str, ptype: str):
     return JSONResponse(status_code=201, content="Pipeline Created")
 
 
-@router.post('/pipeline/create')
+@router.post('/pipeline/create', tags=["PIPELINES POST"])
 async def pipeline_create(name: str, ptype: str):
     if token.check_token_expired():
         token.update_token()
@@ -88,7 +88,7 @@ async def pipeline_create(name: str, ptype: str):
     return JSONResponse(status_code=201, content="Pipeline Created")
 
 
-@router.post("/pipeline/create/trigger")
+@router.post("/pipeline/create/trigger", tags=["PIPELINES POST"])
 async def pipeline_create_trigger(trigger: Trigger):
     if token.check_token_expired():
         token.update_token()
@@ -141,7 +141,7 @@ async def pipeline_create_trigger(trigger: Trigger):
     return JSONResponse(status_code=200, content="Trigger created successfully!")
 
 
-@router.post("/pipeline/run")
+@router.post("/pipeline/run", tags=["PIPELINES POST"])
 async def run_pipeline(pipe: Pipeline):
     if token.check_token_expired():
         token.update_token()
@@ -173,7 +173,7 @@ async def run_pipeline(pipe: Pipeline):
     return JSONResponse(status_code=201, content="Pipeline Started Successfully!")
 
 
-@router.post("/pipeline/variables")
+@router.post("/pipeline/variables", tags=["PIPELINES POST"])
 async def create_variables(variables: Variables):
     if token.check_token_expired():
         token.update_token()
