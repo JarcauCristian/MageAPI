@@ -3,10 +3,6 @@ import json
 import base64
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 class Token:
     def __init__(self):
@@ -18,8 +14,8 @@ class Token:
         }
         data = {
             "session": {
-                "email": os.getenv("EMAIL"),
-                "password": os.getenv("PASSWORD")
+                "email": os.getenv("EMAIL").strip().replace("\n", ""),
+                "password": os.getenv("PASSWORD").strip().replace("\n", "")
             }
         }
 
@@ -44,8 +40,8 @@ class Token:
         }
         data = {
             "session": {
-                "email": os.getenv("EMAIL"),
-                "password": os.getenv("PASSWORD")
+                "email": os.getenv("EMAIL").strip().replace("\n", ""),
+                "password": os.getenv("PASSWORD").strip().replace("\n", "")
             }
         }
 

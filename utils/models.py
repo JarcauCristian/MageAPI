@@ -44,3 +44,8 @@ class Status(BaseModel):
 class Variables(BaseModel):
     name: str
     variables: Dict[str, Any]
+
+
+class Secret(BaseModel):
+    name: str
+    value: str

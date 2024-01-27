@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 from fastapi import APIRouter
 from dependencies import Token
-from utils.models import Pipeline, Trigger, Variables
+from utils.models import Pipeline, Secret, Trigger, Variables
 from starlette.responses import JSONResponse
 
 router = APIRouter()
@@ -215,3 +215,31 @@ async def create_variables(variables: Variables):
 
     return JSONResponse(status_code=200, content="Variables added successfully!")
 
+
+@router.post("/pipeline/secret", tags=["PIPELINES POST"])
+async def create_secret(secret: Secret):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        return JSONResponse(status_code=500, content="Could not get the token!")
+    
+    url = f'{os.getenv("BASE_URL")}/api/secrets?api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        "Authorization": f"Bearer {token.token}"
+    }
+
+    body = {
+        "secret": {
+            "name": secret.name,
+            "value": secret.value
+        },
+        "api_key": os.getenv("API_KEY")
+    }
+
+    response = requests.request("POST", url, headers=headers, data=body)
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content="Could not create the secret!")
+    
+    return JSONResponse(status_code=200, content="Secret created successfully!")

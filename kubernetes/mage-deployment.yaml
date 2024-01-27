@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mage-api-deployment
+  namespace: cjarcau
+  labels:
+    app: mage-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mage-api
+  template:
+    metadata:
+      labels:
+        app: mage-api
+    spec:
+      containers:
+      - name: mage-api
+        image: scr4pp/mage-api:arm2
+        ports:
+        - name: api
+          containerPort: 8000
+        env:
+        - name: API_KEY
+          value: zkWlN0PkIKSN0C11CfUHUj84OT5XOJ6tDZ6bDRO2
+        - name: EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: mage-secret
+              key: email
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mage-secret
+              key: password
+        - name: BASE_URL
+          value: https://mage-ai.sedimark.work
+        imagePullPolicy: IfNotPresent
