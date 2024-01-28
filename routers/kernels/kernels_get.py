@@ -9,7 +9,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.get("/kernels", tags=["KERNEL GET"])
+@router.get("/mage/kernels", tags=["KERNEL GET"])
 async def get_kernels():
     if token.check_token_expired():
         token.update_token()

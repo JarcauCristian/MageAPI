@@ -12,7 +12,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.put("/pipeline/trigger/status", tags=["PIPELINES PUT"])
+@router.put("/mage/pipeline/trigger/status", tags=["PIPELINES PUT"])
 async def pipeline_enable_trigger(status: Status):
     if token.check_token_expired():
         token.update_token()
@@ -47,7 +47,7 @@ async def pipeline_enable_trigger(status: Status):
     return JSONResponse(status_code=200, content="Trigger status changed successfully!")
 
 
-@router.put("/pipeline/description", tags=["PIPELINES PUT"])
+@router.put("/mage/pipeline/description", tags=["PIPELINES PUT"])
 async def put_description(desc: Description):
     if token.check_token_expired():
         token.update_token()

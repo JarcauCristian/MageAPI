@@ -12,7 +12,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.get('/pipeline/status_once', tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/status_once", tags=["PIPELINES GET"])
 async def pipeline_status_once(pipeline_id: int, block_name: str = ""):
     if token.check_token_expired():
         token.update_token()
@@ -47,7 +47,7 @@ async def pipeline_status_once(pipeline_id: int, block_name: str = ""):
     return needed_block["status"]
 
 
-@router.get("/pipeline/triggers", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/triggers", tags=["PIPELINES GET"])
 async def pipeline_triggers(name: str):
     if token.check_token_expired():
         token.update_token()
@@ -76,7 +76,7 @@ async def pipeline_triggers(name: str):
     return JSONResponse(status_code=200, content=returns)
 
 
-@router.get("/pipeline/run/status", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/run/status", tags=["PIPELINES GET"])
 async def pipeline_status(pipeline_id: int):
     if token.check_token_expired():
         token.update_token()
@@ -101,7 +101,7 @@ async def pipeline_status(pipeline_id: int):
     return JSONResponse(status_code=200, content=response.json())
 
 
-@router.get("/pipeline/trigger/status", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/trigger/status", tags=["PIPELINES GET"])
 async def pipeline_status_trigger(name: str):
 
     if token.check_token_expired():
@@ -126,7 +126,7 @@ async def pipeline_status_trigger(name: str):
     return JSONResponse(status_code=200, content=response.json()["pipeline_schedules"][0]["status"])
 
 
-@router.get("/pipeline/status", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/status", tags=["PIPELINES GET"])
 async def pipeline_status(name: str):
     if token.check_token_expired():
         token.update_token()
@@ -155,7 +155,7 @@ async def pipeline_status(name: str):
     return JSONResponse(status_code=200, content=returns)
 
 
-@router.get('/pipeline/batch_status', tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/batch_status", tags=["PIPELINES GET"])
 async def pipeline_status_once(pipeline_id: int):
     if token.check_token_expired():
         token.update_token()
@@ -186,7 +186,7 @@ async def pipeline_status_once(pipeline_id: int):
     return body[0]["status"]
 
 
-@router.get('/pipelines', tags=["PIPELINES GET"])
+@router.get("/mage/pipelines", tags=["PIPELINES GET"])
 async def pipelines():
     pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?api_key={os.getenv("API_KEY")}'
 
@@ -221,7 +221,7 @@ async def pipelines():
     return JSONResponse(status_code=200, content=names)
 
 
-@router.get("/pipelines/specific", tags=["PIPELINES GET"])
+@router.get("/mage/pipelines/specific", tags=["PIPELINES GET"])
 async def specific_pipelines(contains: str):
     cache_key = f"pipelines:{contains}"
 
@@ -270,7 +270,7 @@ async def specific_pipelines(contains: str):
     return JSONResponse(status_code=200, content=pipes)
 
 
-@router.get("/pipeline/read", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/read", tags=["PIPELINES GET"])
 async def read_pipeline(pipeline_name: str):
     if token.check_token_expired():
         token.update_token()
@@ -295,7 +295,7 @@ async def read_pipeline(pipeline_name: str):
     return JSONResponse(status_code=400, content="Pipeline name should not be empty!")
 
 
-@router.get("/pipeline/run_data", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/run_data", tags=["PIPELINES GET"])
 async def run_tag(pipeline_name: str):
     if token.check_token_expired():
         token.update_token()
@@ -331,7 +331,7 @@ async def run_tag(pipeline_name: str):
     return JSONResponse(content=tag, status_code=200)
 
 
-@router.get("/pipeline/description", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/description", tags=["PIPELINES GET"])
 async def description(name: str):
     if token.check_token_expired():
         token.update_token()
@@ -356,7 +356,7 @@ async def description(name: str):
     return JSONResponse(status_code=200, content=response.json()["pipeline"]["description"])
 
 
-@router.get("/pipeline/templates", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/templates", tags=["PIPELINES GET"])
 async def description(pipeline_type: str):
     if token.check_token_expired():
         token.update_token()

@@ -11,7 +11,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post("/block/create", tags=["BLOCKS POST"])
+@router.post("/mage/block/create", tags=["BLOCKS POST"])
 async def block_create(block_name: Annotated[str, Form()], 
                        block_type: Annotated[str, Form()],
                        pipeline_name: Annotated[str, Form()],

@@ -49,7 +49,7 @@ def get_template(name: str):
 
 
 
-@router.get("/block/model", tags=["BLOCKS GET"])
+@router.get("/mage/block/model", tags=["BLOCKS GET"])
 async def block_model(block_name: str):
     if block_name == "export_csv":
             response = requests.get("http://10.43.195.157:49150/categories")
@@ -66,7 +66,7 @@ async def block_model(block_name: str):
         return JSONResponse(content=returns, status_code=200)
             
 
-@router.get("/block/read", tags=["BLOCKS GET"])
+@router.get("/mage/block/read", tags=["BLOCKS GET"])
 async def read_block(block_name: str, pipeline_name: str):
     if token.check_token_expired():
         token.update_token()

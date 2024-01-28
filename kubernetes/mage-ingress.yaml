@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mage-api-ingress
+  namespace: cjarcau
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "86400"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /mage
+            pathType: Prefix
+            backend:
+              service:
+                name: mage-api-service
+                port:
+                  number: 49155
+  ingressClassName: nginx

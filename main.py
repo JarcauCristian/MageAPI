@@ -38,7 +38,7 @@ app.include_router(blocks_delete.router)
 app.include_router(kernels_get.router)
 
 
-@app.get("/")
+@app.get("/mage")
 async def entry():
     return JSONResponse(content="Hello from server!", status_code=200)
 
