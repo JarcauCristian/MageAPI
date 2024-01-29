@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: mage-api
-        image: scr4pp/mage-api:arm3
+        image: scr4pp/mage-api:arm4
         ports:
         - name: api
           containerPort: 8000

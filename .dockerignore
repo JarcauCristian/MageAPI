@@ -1,0 +1,5 @@
+venv
+.idear
+__pycache__
+.env
+kubernetes
