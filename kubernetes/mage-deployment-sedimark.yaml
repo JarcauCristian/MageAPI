@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mage-api-deployment
+  name: mage-api-sedimark-deployment
   namespace: cjarcau
   labels:
     app: mage-api
@@ -9,17 +9,17 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mage-api
+      app: mage-api-sedimark
   template:
     metadata:
       labels:
-        app: mage-api
+        app: mage-api-sedimark
     spec:
       containers:
-      - name: mage-api
-        image: scr4pp/mage-api:arm5
+      - name: mage-api-sedimark
+        image: scr4pp/mage-api:arm6
         ports:
-        - name: api
+        - name: api-sedimark
           containerPort: 8000
         env:
         - name: API_KEY
@@ -35,5 +35,5 @@ spec:
               name: mage-secret
               key: password
         - name: BASE_URL
-          value: https://mage-ai.sedimark.work
+          value: https://mage.sedimark.work
         imagePullPolicy: IfNotPresent

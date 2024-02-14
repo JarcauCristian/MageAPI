@@ -1,8 +1,8 @@
 import os
 import json
 import requests
-from fastapi import APIRouter
 from dependencies import Token
+from fastapi import APIRouter, Header
 from starlette.responses import JSONResponse
 
 router = APIRouter()
@@ -50,9 +50,14 @@ def get_template(name: str):
 
 
 @router.get("/mage/block/model", tags=["BLOCKS GET"])
-async def block_model(block_name: str):
+async def block_model(block_name: str, authorization: str = Header(None)):
+    if authorization is None or not authorization.startswith("Bearer "):
+        return JSONResponse(status_code=401, content="Unauthorized!")
+
     if block_name == "export_csv":
-            response = requests.get("http://10.43.195.157:49150/categories")
+            response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
+                "Authorization": authorization
+            })
 
             categories = []
             if response.status_code == 200:

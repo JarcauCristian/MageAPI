@@ -1,11 +1,12 @@
 import os
 import json
 import requests
+from datetime import datetime
 from fastapi import APIRouter
-from redis_cache.cache import get_data_from_redis, is_data_stale, set_data_in_redis, update_timestamp
-from utils.pipelines import parse_pipeline, parse_pipelines
 from dependencies import Token
 from starlette.responses import JSONResponse
+from utils.pipelines import parse_pipeline, parse_pipelines
+from redis_cache.cache import get_data_from_redis, is_data_stale, set_data_in_redis, update_timestamp
 
 router = APIRouter()
 
@@ -293,6 +294,81 @@ async def read_pipeline(pipeline_name: str):
         return JSONResponse(status_code=200, content=result)
 
     return JSONResponse(status_code=400, content="Pipeline name should not be empty!")
+
+
+@router.get("/mage/pipeline/read/full", tags=["PIPELINES GET"])
+async def read_full_pipeline(pipeline_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        return JSONResponse(status_code=500, content="Could not get the token!")
+    
+    if pipeline_name != "":
+        headers = {
+            "Authorization": f"Bearer {token.token}"
+        }
+
+        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
+                                f'{os.getenv("API_KEY")}', headers=headers)
+
+        if response.status_code != 200:
+            return JSONResponse(status_code=500, content="Could not get pipeline result!")
+
+        return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
+
+    return JSONResponse(status_code=400, content="Pipeline name should not be empty!")
+
+
+@router.get("/mage/pipeline/history")
+async def pipeline_history(pipeline_name: str, limit: int = 30):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        return JSONResponse(status_code=500, content="Could not get the token!")
+    
+    url = f'{os.getenv("BASE_URL")}/api/pipeline_schedules?api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        "Authorization": f"Bearer {token.token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code != 200:
+        return JSONResponse(content="Could not get pipeline data!", status_code=500)
+
+    if response.json().get("error") is not None:
+        return JSONResponse(content="Error when getting the pipeline!", status_code=500)
+
+    run_id = None
+    for schedule in response.json()["pipeline_schedules"]:
+        if schedule["pipeline_uuid"] == pipeline_name:
+            run_id = schedule["id"]
+
+    if run_id is None:
+        return JSONResponse("Pipeline does not have any active runs!", status_code=404)
+    
+    url = f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{run_id}/pipeline_runs?_limit={limit}&_offset=0&api_key={os.getenv("API_KEY")}'
+
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code != 200:
+        return JSONResponse(content="Could not get pipeline data!", status_code=500)
+
+    if response.json().get("error") is not None:
+        return JSONResponse(content="Error when getting the pipeline!", status_code=500)
+
+    returns = []
+    
+    for entry in response.json()["pipeline_runs"]:
+        returns.append({
+            "status": entry["status"],
+            "variables": entry["variables"],
+            "running_date": datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
+        })
+
+    return JSONResponse(returns, status_code=200)
 
 
 @router.get("/mage/pipeline/run_data", tags=["PIPELINES GET"])
