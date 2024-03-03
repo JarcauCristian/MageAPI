@@ -50,10 +50,8 @@ async def block_create(block_name: Annotated[str, Form()],
     payload = json.dumps(payload).replace("\\\\", "\\")
     response = requests.request("POST", url=f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}/blocks?'
                                             f'api_key={os.getenv("API_KEY")}', headers=headers, data=payload)
-    if response.status_code != 200:
+    
+    if response.status_code != 200 or response.json().get("error") is not None:
         return JSONResponse(status_code=500, content="Could not create block!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error occurred when creating the block!")
 
     return JSONResponse(status_code=200, content="Block Created!")
