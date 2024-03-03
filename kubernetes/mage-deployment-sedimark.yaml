@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: mage-api-sedimark
-        image: scr4pp/mage-api:arm6
+        image: scr4pp/mage-api:arm7
         ports:
         - name: api-sedimark
           containerPort: 8000
