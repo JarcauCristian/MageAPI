@@ -17,12 +17,18 @@ async def delete_pipeline(name: str):
     if token.token == "":
         return JSONResponse(status_code=500, content="Could not get the token!")
     
-    response = requests.request("GET", f"https://ingress.sedimark.work/mage/pipeline/triggers?name={name}")
+    url = f'{os.getenv("BASE_URL")}/api/pipelines/{name}/pipeline_schedules?api_key={os.getenv("API_KEY")}'
+    headers = {
+        "Authorization": f"Bearer {token.token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=500, conetent="Could not get some information about the pipeline!")
+        return JSONResponse(status_code=response.status_code, content="Could not get triggers!")
     
-    schedule_id = response.json()["id"]
+    schedule_id = response.json()["pipeline_schedules"][0]["id"]
 
     headers = {
         "Content-Type": "application/json",
