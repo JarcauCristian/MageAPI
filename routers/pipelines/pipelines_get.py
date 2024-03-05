@@ -319,6 +319,39 @@ async def read_full_pipeline(pipeline_name: str):
     return JSONResponse(status_code=400, content="Pipeline name should not be empty!")
 
 
+@router.get("/mage/pipeline/read/predict/full", tags=["PIPELINES GET"])
+async def read_full_pipeline(model_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        return JSONResponse(status_code=500, content="Could not get the token!")
+    
+    if model_name != "":
+        headers = {
+            "Authorization": f"Bearer {token.token}",
+            "Content-Type": "application/json",
+            "X-API-KEY": os.getenv("API_KEY")
+        }
+
+        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}', headers=headers)
+
+        if response.status_code != 200 or response.json().get("error") is not None:
+            return JSONResponse(status_code=500, content="Could not get pipeline result!")
+        
+        return_pipeline = None
+        for pipeline in response.json()["pipelines"]:
+            if model_name in pipeline["tags"]:
+                return_pipeline = pipeline
+                break
+
+        if return_pipeline is None:
+            return JSONResponse(status_code=404, content="Could not find the pipeline you are looking for!")
+
+        return JSONResponse(status_code=200, content=return_pipeline)
+
+    return JSONResponse(status_code=400, content="Pipeline name should not be empty!")
+
+
 @router.get("/mage/pipeline/history")
 async def pipeline_history(pipeline_name: str, limit: int = 30):
     if token.check_token_expired():
