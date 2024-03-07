@@ -395,11 +395,29 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     returns = []
     
     for entry in response.json()["pipeline_runs"]:
-        returns.append({
-            "status": entry["status"],
-            "variables": entry["variables"],
-            "running_date": datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
-        })
+        failed_index = None
+        for i, block_run in enumerate(entry["block_runs"]):
+            if block_run["status"] == "failed":
+                   failed_index = i
+                   break
+        
+        return_data = {}
+        if failed_index is None:
+            return_data["status"] = entry["status"]
+            return_data["variables"] = entry["variables"]
+            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
+            return_data["last_completed_block"] = entry["block_runs"][-1]["block_uuid"]
+            return_data["last_failed_block"] = "-"
+            return_data["error_message"] = "-"
+        else:
+            return_data["status"] = entry["status"]
+            return_data["variables"] = entry["variables"]
+            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
+            return_data["last_completed_block"] = entry["block_runs"][failed_index - 1]["block_uuid"]
+            return_data["last_failed_block"] = entry["block_runs"][failed_index]["block_uuid"]
+            return_data["error_message"] = entry["block_runs"][failed_index]["metrics"]["error"]["error"] if len(entry["block_runs"][failed_index]["metrics"].keys()) else "-"
+
+        returns.append(return_data)
 
     return JSONResponse(returns, status_code=200)
 
