@@ -28,7 +28,7 @@ async def delete_pipeline(name: str):
     if response.status_code != 200 or response.json().get("error") is not None:
         return JSONResponse(status_code=response.status_code, content="Could not get triggers!")
     
-    schedule_id = response.json()["pipeline_schedules"][0]["id"]
+    schedule_id = response.json()["pipeline_schedules"][0]["id"] if len(response.json()["pipeline_schedules"]) > 0 else None
 
     headers = {
         "Content-Type": "application/json",
@@ -36,10 +36,11 @@ async def delete_pipeline(name: str):
         "X-API-KEY": os.getenv("API_KEY")
     }
 
-    response = requests.request("DELETE", f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{schedule_id}?api_key={os.getenv("API_KEY")}', headers=headers)
+    if schedule_id is not None:
+        response = requests.request("DELETE", f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{schedule_id}?api_key={os.getenv("API_KEY")}', headers=headers)
 
-    if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=500, conetent="Could not delete some information about the pipeline!")
+        if response.status_code != 200 or response.json().get("error") is not None:
+            return JSONResponse(status_code=500, conetent="Could not delete some information about the pipeline!")
 
     url = f'{os.getenv("BASE_URL")}/api/pipelines/{name}'
 
