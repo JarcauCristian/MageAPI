@@ -52,6 +52,6 @@ async def block_create(block_name: Annotated[str, Form()],
                                             f'api_key={os.getenv("API_KEY")}', headers=headers, data=payload)
     
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Could not create block!")
+        return JSONResponse(status_code=500, content=f"Error creating the block {block_name}!")
 
     return JSONResponse(status_code=200, content="Block Created!")

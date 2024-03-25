@@ -31,7 +31,7 @@ async def update_block(block: Block):
                                                f'/blocks/{block.block_name}?api_key={os.getenv("API_KEY")}',
                                     headers=headers, data=payload)
         if response.status_code != 200:
-            return JSONResponse(status_code=500, content="Could not update block!")
+            return JSONResponse(status_code=500, content=f"Error updating the block {block.block_name}!")
 
         return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
 

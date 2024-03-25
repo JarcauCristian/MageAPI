@@ -42,48 +42,8 @@ async def pipeline_create(name: str, ptype: str):
 
     response = requests.post(url, headers=headers, data=json.dumps(data))
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content=response.json().get('message'))
-
-    return JSONResponse(status_code=201, content="Pipeline Created")
-
-
-@router.post("/mage/pipeline/create", tags=["PIPELINES POST"])
-async def pipeline_create(name: str, ptype: str):
-    if token.check_token_expired():
-        token.update_token()
-    if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
-
-    if ptype not in ["python", "streaming"]:
-        return JSONResponse(status_code=400, content="Only python and streaming are required for type")
-
-    url = f'{os.getenv("BASE_URL")}/api/pipelines'
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {token.token}',
-        'X-API-KEY': os.getenv("API_KEY")
-    }
-
-    data = {
-        "pipeline": {
-            "name": name,
-            "type": ptype,
-            "description": "not created"
-        }
-    }
-
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content=response.json().get('message'))
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content=f"An error occurred when creating the pipeline {name}!")
 
     return JSONResponse(status_code=201, content="Pipeline Created")
 
@@ -211,7 +171,7 @@ async def create_variables(variables: Variables):
             error_counter += 1
 
     if error_counter > 0:
-        return JSONResponse(status_code=500, content=f"{error_counter}variables could not be created!")
+        return JSONResponse(status_code=500, content=f"{error_counter} variables could not be created!")
 
     return JSONResponse(status_code=200, content="Variables added successfully!")
 
@@ -226,7 +186,9 @@ async def create_secret(secret: Secret):
     url = f'{os.getenv("BASE_URL")}/api/secrets?api_key={os.getenv("API_KEY")}'
 
     headers = {
-        "Authorization": f"Bearer {token.token}"
+        "Authorization": f"Bearer {token.token}",
+        "Content-Type": "application/json",
+        "X-API-KEY": os.getenv("API_KEY")
     }
 
     body = {
@@ -237,7 +199,7 @@ async def create_secret(secret: Secret):
         "api_key": os.getenv("API_KEY")
     }
 
-    response = requests.request("POST", url, headers=headers, data=body)
+    response = requests.request("POST", url, headers=headers, json=body)
 
     if response.status_code != 200 or response.json().get("error") is not None:
         return JSONResponse(status_code=500, content="Could not create the secret!")

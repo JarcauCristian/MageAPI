@@ -72,11 +72,8 @@ async def put_description(desc: Description):
 
     response = requests.request("PUT", url, headers=headers, data=payload)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=400, content="Bad Request!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error from server!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content=f"Error updating the description of {desc.name}!")
 
     return JSONResponse(status_code=200, content="Pipeline updated successfully!")
 

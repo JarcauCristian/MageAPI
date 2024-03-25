@@ -85,8 +85,8 @@ async def read_block(block_name: str, pipeline_name: str):
         }
         response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}/blocks/{block_name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
-        if response.status_code != 200:
-            return JSONResponse(status_code=500, content="Could not get pipeline result!")
+        if response.status_code != 200 or response.json().get("error") is not None:
+            return JSONResponse(status_code=500, content=f"Error occured when reading the block {block_name}")
 
         return JSONResponse(content=response.json(), status_code=200)
 
