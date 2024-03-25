@@ -24,11 +24,8 @@ async def get_kernels():
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=int(response.json().get('code')), content=response.json().get('message'))
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content="Error getting the information about the Mage kernel!")
 
     returns = {
         "alive": response.json()["kernels"][0]["alive"],

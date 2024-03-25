@@ -28,13 +28,8 @@ async def pipeline_status_once(pipeline_id: int, block_name: str = ""):
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    json_response = dict(response.json())
-
-    if json_response.get("error") is not None:
-        return JSONResponse(status_code=int(json_response.get('code')), content=json_response.get('message'))
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content=f"Error getting the status of the block {block_name}!")
 
     body = json.loads(response.content.decode('utf-8'))['pipeline_runs']
     if len(body) == 0:
@@ -63,11 +58,8 @@ async def pipeline_triggers(name: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Bad request!")
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error gettiing the triggers!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content=f"Error getting the trigger for {name}")
 
     returns = {
         "id": response.json()["pipeline_schedules"][0]["id"],
@@ -93,11 +85,8 @@ async def pipeline_status(pipeline_id: int):
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=400, content="Bad Pipeline ID!")
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Could not load run status!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content=f"Error getting the status of the run with id {pipeline_id}")
     
     return JSONResponse(status_code=200, content=response.json())
 
@@ -118,11 +107,8 @@ async def pipeline_status_trigger(name: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Bad request!")
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error gettiing trigger status!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content="There was an error getting the status of the trigger!")
 
     return JSONResponse(status_code=200, content=response.json()["pipeline_schedules"][0]["status"])
 
@@ -142,11 +128,8 @@ async def pipeline_status(name: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Bad request!")
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error gettiing the triggers!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content="There was an error getting the status of pipeline!")
 
     returns = {
         "last_status": response.json()["pipeline_schedules"][0]["last_pipeline_run_status"],
@@ -171,13 +154,8 @@ async def pipeline_status_once(pipeline_id: int):
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    json_response = dict(response.json())
-
-    if json_response.get("error") is not None:
-        return JSONResponse(status_code=int(json_response.get('code')), content=json_response.get('message'))
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=response.status_code, content=f"Error getting the status of the pipeline with id {pipeline_id}!")
 
     body = json.loads(response.content.decode('utf-8'))['pipeline_runs']
     
@@ -204,7 +182,7 @@ async def pipelines():
     response = requests.get(pipelines_url, headers=headers)
 
     if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
+        return JSONResponse(status_code=response.status_code, content="An error occurred when getting the pipelines!")
 
     json_response = dict(response.json())
 
@@ -223,14 +201,51 @@ async def pipelines():
 
 
 @router.get("/mage/pipelines/specific", tags=["PIPELINES GET"])
-async def specific_pipelines(contains: str):
+async def specific_pipelines(contains: str, changed: bool = False):
     cache_key = f"pipelines:{contains}"
+
+    if changed:
+        if token.check_token_expired():
+            token.update_token()
+        if token.token == "":
+            return JSONResponse(status_code=500, content="Could not get the token!")
+
+        url = f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}'
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token.token}"
+        }
+
+        response = requests.request("GET", url, headers=headers)
+
+        if response.status_code != 200 or response.json().get("error") is not None:
+          return JSONResponse(status_code=response.status_code, content=f"Error getting the pipelines for user with id {contains}!")
+
+        if len(response.json().get("pipelines")) == 0:
+          return JSONResponse(status_code=200, content=[])
+
+        pipes = []
+        for pipeline in response.json().get("pipelines"):
+            resp = requests.request("GET", f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline.get("uuid")}?'
+                                           f'api_key={os.getenv("API_KEY")}', headers=headers)
+
+            if resp.status_code == 200:
+              if resp.json().get("error") is None:
+                  pipes.append(resp.json().get("pipeline"))
+
+        pipes = parse_pipelines(pipes, contains)
+
+        set_data_in_redis(cache_key, json.dumps(pipes), expire_time_seconds=60)
+
+        update_timestamp(cache_key)
+
+        return JSONResponse(status_code=200, content=pipes)
+    
 
     cached_data = get_data_from_redis(cache_key)
     if cached_data and not is_data_stale(cache_key, expire_time_seconds=60):
         return JSONResponse(status_code=200, content=json.loads(cached_data.decode()))
-        
-
+    
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -244,14 +259,11 @@ async def specific_pipelines(contains: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=response.status_code, content="Something happened with the server!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+      return JSONResponse(status_code=response.status_code, content=f"Error getting the pipelines for user with id {contains}!")
 
     if len(response.json().get("pipelines")) == 0:
-        return JSONResponse(status_code=200, content=[])
+      return JSONResponse(status_code=200, content=[])
 
     pipes = []
     for pipeline in response.json().get("pipelines"):
@@ -259,8 +271,8 @@ async def specific_pipelines(contains: str):
                                        f'api_key={os.getenv("API_KEY")}', headers=headers)
 
         if resp.status_code == 200:
-            if resp.json().get("error") is None:
-                pipes.append(resp.json().get("pipeline"))
+          if resp.json().get("error") is None:
+              pipes.append(resp.json().get("pipeline"))
 
     pipes = parse_pipelines(pipes, contains)
 
@@ -269,7 +281,7 @@ async def specific_pipelines(contains: str):
     update_timestamp(cache_key)
 
     return JSONResponse(status_code=200, content=pipes)
-
+        
 
 @router.get("/mage/pipeline/read", tags=["PIPELINES GET"])
 async def read_pipeline(pipeline_name: str):
@@ -368,11 +380,8 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(content="Could not get pipeline data!", status_code=500)
-
-    if response.json().get("error") is not None:
-        return JSONResponse(content="Error when getting the pipeline!", status_code=500)
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(content=f"Error getting the informations for {pipeline_name}!", status_code=500)
 
     run_id = None
     for schedule in response.json()["pipeline_schedules"]:
@@ -386,11 +395,8 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(content="Could not get pipeline data!", status_code=500)
-
-    if response.json().get("error") is not None:
-        return JSONResponse(content="Error when getting the pipeline!", status_code=500)
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(content=f"Error getting the history of runs for {pipeline_name}!", status_code=500)
 
     returns = []
     
@@ -422,42 +428,6 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     return JSONResponse(returns, status_code=200)
 
 
-@router.get("/mage/pipeline/run_data", tags=["PIPELINES GET"])
-async def run_tag(pipeline_name: str):
-    if token.check_token_expired():
-        token.update_token()
-    if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
-
-    url = f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key={os.getenv("API_KEY")}'
-
-    headers = {
-        "Authorization": f"Bearer {token.token}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.request("GET", url, headers=headers)
-
-    if response.status_code != 200:
-        return JSONResponse(content="Could not get pipeline data!", status_code=500)
-
-    if response.json().get("error") is not None:
-        return JSONResponse(content="Error when getting the pipeline!", status_code=500)
-
-    tag = {}
-
-    for t in response.json()["pipeline"]["tags"]:
-        if "run_id" in t:
-            tag["run_id"] = int(t.split(":")[1].strip())
-        elif "token" in t:
-            tag["token"] = t.split(":")[1].strip()
-
-    if tag == {}:
-        return JSONResponse(content="There are no run tags for this pipeline", status_code=404)
-
-    return JSONResponse(content=tag, status_code=200)
-
-
 @router.get("/mage/pipeline/description", tags=["PIPELINES GET"])
 async def description(name: str):
     if token.check_token_expired():
@@ -474,11 +444,8 @@ async def description(name: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=400, content="Bad Request!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error from server!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content="Error getting pipeline's description!")
 
     return JSONResponse(status_code=200, content=response.json()["pipeline"]["description"])
 
@@ -502,11 +469,8 @@ async def description(pipeline_type: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.json().get("error") is not None:
         return JSONResponse(content="Could not load the templates!", status_code=500)
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(content="Bad Request!", status_code=400)
     
     body = response.json()["custom_templates"]
 

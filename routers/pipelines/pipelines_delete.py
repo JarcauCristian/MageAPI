@@ -46,12 +46,8 @@ async def delete_pipeline(name: str):
 
     response = requests.request("DELETE", url, headers=headers)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=500, content="Something happened when deleting the pipeline!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Something happened when deleting the pipeline!")
-    
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content="Error deleting the pipeline!")
 
     return JSONResponse(status_code=200, content="Pipeline deleted successfully!")
 

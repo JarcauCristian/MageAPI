@@ -25,11 +25,8 @@ async def delete_block(block: DeleteBlock):
                                           f'blocks/{block.block_name}?block_type={block.block_type}&'
                                           f'api_key={os.getenv("API_KEY")}&force={block.force}')
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=500, content="Could not delete block!")
-
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error occurred when deleting block!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        return JSONResponse(status_code=500, content=f"Error occurred when deleting the block {block.block_name}!")
 
     return JSONResponse(status_code=200, content="Block Deleted!")
 
