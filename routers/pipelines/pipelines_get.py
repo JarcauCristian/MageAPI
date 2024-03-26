@@ -411,14 +411,14 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
         if failed_index is None:
             return_data["status"] = entry["status"]
             return_data["variables"] = entry["variables"]
-            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
+            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f"), "%Y-%m-%d %H:%M")
             return_data["last_completed_block"] = entry["block_runs"][-1]["block_uuid"]
             return_data["last_failed_block"] = "-"
             return_data["error_message"] = "-"
         else:
             return_data["status"] = entry["status"]
             return_data["variables"] = entry["variables"]
-            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f%z"), "%Y-%m-%d %H:%M")
+            return_data["running_date"] = datetime.strftime(datetime.strptime(entry["execution_date"], "%Y-%m-%d %H:%M:%S.%f"), "%Y-%m-%d %H:%M")
             return_data["last_completed_block"] = entry["block_runs"][failed_index - 1]["block_uuid"]
             return_data["last_failed_block"] = entry["block_runs"][failed_index]["block_uuid"]
             return_data["error_message"] = entry["block_runs"][failed_index]["metrics"]["error"]["error"] if len(entry["block_runs"][failed_index]["metrics"].keys()) else "-"
