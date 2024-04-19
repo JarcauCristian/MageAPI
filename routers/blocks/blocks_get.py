@@ -55,7 +55,7 @@ async def block_model(block_name: str, authorization: str = Header(None)):
         return JSONResponse(status_code=401, content="Unauthorized!")
 
     if block_name == "export_csv":
-            response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
+            response = requests.get("http://neo4j-api-service.cjarcau.svc.cluster.local:49150/neo4j/categories", headers={
                 "Authorization": authorization
             })
 
