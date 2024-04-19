@@ -54,8 +54,8 @@ async def block_model(block_name: str, authorization: str = Header(None)):
     if authorization is None or not authorization.startswith("Bearer "):
         return JSONResponse(status_code=401, content="Unauthorized!")
 
-    if block_name == "export_csv":
-            response = requests.get("http://neo4j-api-service.cjarcau.svc.cluster.local:49150/neo4j/categories", headers={
+    if block_name == "export_to_minio":
+            response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
                 "Authorization": authorization
             })
 
@@ -63,8 +63,8 @@ async def block_model(block_name: str, authorization: str = Header(None)):
             if response.status_code == 200:
                 categories = response.json()
                 
-            returns = get_template("export_csv")
-            returns["variables"]["category"] = categories
+            returns = get_template("export_to_minio")
+            returns["variables"]["category"]["values"] = categories
             return JSONResponse(content=returns, status_code=200)
     else:
         returns = get_template(block_name)
