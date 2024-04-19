@@ -50,16 +50,14 @@ def get_template(name: str):
 
 
 @router.get("/mage/block/model", tags=["BLOCKS GET"])
-async def block_model(block_name: str, authorization: str = Header(None)):
-    if authorization is None or not authorization.startswith("Bearer "):
-        return JSONResponse(status_code=401, content="Unauthorized!")
-
+async def block_model(block_name: str):
     if block_name == "export_to_minio":
             response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
-                "Authorization": authorization
+                "Authorization": f"Bearer mage_{os.getenv('NEO4J_PASSWORD')}"
             })
 
             categories = []
+            print(response.status_code, response.json())
             if response.status_code == 200:
                 categories = response.json()
                 
