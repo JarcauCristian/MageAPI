@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
 
-app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs")
+app = FastAPI(openapi_url="/docs/mage/openapi.json", docs_url="/mage/docs")
 
 origins = ["*"]
 
