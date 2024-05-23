@@ -4,10 +4,10 @@ import random
 import string
 import requests
 from datetime import datetime
-from fastapi import APIRouter
 from dependencies import Token
-from utils.models import Pipeline, Secret, Trigger, Variables
+from fastapi import APIRouter
 from starlette.responses import JSONResponse
+from utils.models import Pipeline, Secret, Trigger, Variables
 
 router = APIRouter()
 

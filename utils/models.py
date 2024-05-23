@@ -49,3 +49,9 @@ class Variables(BaseModel):
 class Secret(BaseModel):
     name: str
     value: str
+
+
+class UpdateTrigger(BaseModel):
+    trigger_id: int
+    status: str
+    pipeline_uuid: str
