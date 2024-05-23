@@ -2,8 +2,8 @@ import os
 import json
 import requests
 from datetime import datetime
-from fastapi import APIRouter
 from dependencies import Token
+from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 from utils.pipelines import parse_pipeline, parse_pipelines
 from redis_cache.cache import get_data_from_redis, is_data_stale, set_data_in_redis, update_timestamp
@@ -166,8 +166,37 @@ async def pipeline_status_once(pipeline_id: int):
 
 
 @router.get("/mage/pipelines", tags=["PIPELINES GET"])
-async def pipelines():
-    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?api_key={os.getenv("API_KEY")}'
+async def pipelines(tag: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        return JSONResponse(status_code=500, content="Could not get the token!")
+    
+    if tag not in ["train", "data_preprocessing"]:
+        raise HTTPException(status_code=400, detail="tag parameter should be train or data_preprocessing.")
+
+    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?tag[]={tag}&api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token.token}'
+    }
+
+    response = requests.get(pipelines_url, headers=headers)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, content="An error occurred when getting the pipelines!")
+
+    names = []
+    for pipe in response.json()["pipelines"]:
+        names.append(pipe.get("name"))
+        
+    return JSONResponse(status_code=200, content=names)
+
+
+@router.get("/mage/pipelines/streaming", tags=["PIPELINES GET"])
+async def streaming_pipelines():
+    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?type[]=streaming&api_key={os.getenv("API_KEY")}'
 
     if token.check_token_expired():
         token.update_token()
@@ -184,19 +213,10 @@ async def pipelines():
     if response.status_code != 200:
         return JSONResponse(status_code=response.status_code, content="An error occurred when getting the pipelines!")
 
-    json_response = dict(response.json())
-
     names = []
-    for pipe in json_response["pipelines"]:
-        tag = None
-        for t in pipe.get("tags"):
-            if t in ["train", "data_preprocessing"]:
-                tag = t
-                break
-        names.append({
-            "name": pipe.get("name"),
-            "type": tag
-        })
+    for pipe in response.json()["pipelines"]:
+        names.append(pipe.get("name"))
+
     return JSONResponse(status_code=200, content=names)
 
 
