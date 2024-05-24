@@ -172,8 +172,8 @@ async def pipelines(tag: str):
     if token.token == "":
         return JSONResponse(status_code=500, content="Could not get the token!")
     
-    if tag not in ["train", "data_preprocessing"]:
-        raise HTTPException(status_code=400, detail="tag parameter should be train or data_preprocessing.")
+    if tag not in ["train", "data_preprocessing", "streaming"]:
+        raise HTTPException(status_code=400, detail="tag parameter should be train, data_preprocessing or streaming.")
 
     pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?tag[]={tag}&api_key={os.getenv("API_KEY")}'
 
@@ -191,32 +191,6 @@ async def pipelines(tag: str):
     for pipe in response.json()["pipelines"]:
         names.append(pipe.get("name"))
         
-    return JSONResponse(status_code=200, content=names)
-
-
-@router.get("/mage/pipelines/streaming", tags=["PIPELINES GET"])
-async def streaming_pipelines():
-    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?type[]=streaming&api_key={os.getenv("API_KEY")}'
-
-    if token.check_token_expired():
-        token.update_token()
-    if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {token.token}'
-    }
-
-    response = requests.get(pipelines_url, headers=headers)
-
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="An error occurred when getting the pipelines!")
-
-    names = []
-    for pipe in response.json()["pipelines"]:
-        names.append(pipe.get("name"))
-
     return JSONResponse(status_code=200, content=names)
 
 

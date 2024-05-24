@@ -3,6 +3,8 @@ import json
 import base64
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
 
 class Token:
     def __init__(self):
