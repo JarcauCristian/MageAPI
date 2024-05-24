@@ -17,8 +17,8 @@ RUN pip install -r requirements.txt
 ENV API_KEY = key
 ENV EMAIL = admin@admin.com
 ENV PASSWORD = password
-ENV BASE_URL = https://mage-ai.sedimark.work
+ENV BASE_URL = https://mage.sedimark.work
 
-EXPOSE 8000
+EXPOSE 8000 
 
 CMD ["python3", "main.py"]
