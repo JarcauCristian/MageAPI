@@ -139,6 +139,31 @@ async def pipeline_status(name: str):
     return JSONResponse(status_code=200, content=returns)
 
 
+@router.get("/mage/pipeline/streaming/status", tags=["PIPELINE GET"])
+async def streaming_status(pipeline_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token.token}",
+    }
+
+    url = f"{os.getenv('BASE_URL')}/api/pipeline_runs?pipeline_uuid={pipeline_name}&api_key={os.getenv('API_KEY')}"
+        
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail=f"Recived error when getting the status for pipeline {pipeline_name}!")
+    
+    if len(response.json()["pipeline_runs"]) != 0:
+        return JSONResponse("active", status_code=200)
+    
+    return JSONResponse("inactive", status_code=200)
+
+
 @router.get("/mage/pipeline/batch_status", tags=["PIPELINES GET"])
 async def pipeline_status_once(pipeline_id: int):
     if token.check_token_expired():
