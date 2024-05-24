@@ -55,12 +55,25 @@ async def websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         clients.remove(websocket)
         print("Client disconnected")
+    except Exception as e:
+        print(f"Error: {e}")
+        if websocket in clients:
+            clients.remove(websocket)
 
 
 async def broadcast_message(message: str):
+    disconnected_clients = []
     for client in clients:
-        await client.send_text(message)
-
+        try:
+            await client.send_text(message)
+        except WebSocketDisconnect:
+            disconnected_clients.append(client)
+        except Exception as e:
+            print(f"Error sending message to client: {e}")
+            disconnected_clients.append(client)
+    
+    for client in disconnected_clients:
+        clients.remove(client)
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0")
