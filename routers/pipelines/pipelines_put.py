@@ -63,6 +63,8 @@ async def trigger_update(trigger: UpdateTrigger):
         "Authorization": f"Bearer {token.token}",
     }
 
+
+
     runs_url = f"{os.getenv('BASE_URL')}/api/pipeline_runs?pipeline_uuid={trigger.pipeline_uuid}&api_key={os.getenv('API_KEY')}"
         
     runs_response = requests.request("GET", runs_url, headers=headers)
@@ -82,23 +84,34 @@ async def trigger_update(trigger: UpdateTrigger):
     if trigger.status == "start":
         body = {
             "api_key": os.getenv('API_KEY'),
-            "pipeline_run": {
-                "backfill_id": None,
-                "event_variables": {},
-                "execution_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%z"),
-                "pipeline_schedule_id": trigger.trigger_id,
-                "pipeline_uuid": trigger.pipeline_uuid,
-                "variables": {}
+            "pipeline_schedule": {
+                "id": trigger.trigger_id,
+                "status": "active",
             }
         }
 
-        url = f"{os.getenv('BASE_URL')}/api/pipeline_schedules/{trigger.trigger_id}/pipeline_runs?api_key={os.getenv('API_KEY')}"
+        url = f"{os.getenv('BASE_URL')}/api/pipeline_schedules/{trigger.trigger_id}?api_key={os.getenv('API_KEY')}"
 
-        response = requests.request("POST", url, headers=headers, data=json.dumps(body, indent=4))
+        response = requests.request("PUT", url, headers=headers, data=json.dumps(body, indent=4))
 
         if response.status_code != 200 or response.json().get("error") is not None:
             raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
     elif trigger.status == "stop":
+        body = {
+            "api_key": os.getenv('API_KEY'),
+            "pipeline_schedule": {
+                "id": trigger.trigger_id,
+                "status": "inactive",
+            }
+        }
+
+        url = f"{os.getenv('BASE_URL')}/api/pipeline_schedules/{trigger.trigger_id}?api_key={os.getenv('API_KEY')}"
+
+        response = requests.request("PUT", url, headers=headers, data=json.dumps(body, indent=4))
+
+        if response.status_code != 200 or response.json().get("error") is not None:
+            raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
+
         url = f"{os.getenv('BASE_URL')}/api/pipeline_runs/{last_run_id}?api_key={os.getenv('API_KEY')}"
 
         response = requests.request("DELETE", url, headers=headers)
@@ -106,7 +119,7 @@ async def trigger_update(trigger: UpdateTrigger):
         if response.status_code != 200 or response.json().get("error") is not None:
             raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
     
-    return JSONResponse(status_code=200, content=f"Trigger with id: {trigger.trigger_id} updated successfully!")
+    return JSONResponse(status_code=200, content=f"Trigger with id {trigger.trigger_id} updated successfully!")
     
 
 

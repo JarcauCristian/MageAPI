@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs")
 clients = []
@@ -53,7 +55,8 @@ async def websocket(websocket: WebSocket):
             print(data)
             await broadcast_message(data)
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        if websocket in clients:
+            clients.remove(websocket)
         print("Client disconnected")
     except Exception as e:
         print(f"Error: {e}")
@@ -73,7 +76,8 @@ async def broadcast_message(message: str):
             disconnected_clients.append(client)
     
     for client in disconnected_clients:
-        clients.remove(client)
+        if client in clients:
+            clients.remove(client)
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0")
