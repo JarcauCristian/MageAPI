@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-from datetime import datetime
 from dependencies import Token
 from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
@@ -18,10 +17,10 @@ async def pipeline_enable_trigger(status: Status):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
     
     if status.status not in ["active", "inactive"]:
-        return JSONResponse(status_code=400, content="Status can only be active or inactive!")
+        raise HTTPException(status_code=400, detail="Status can only be active or inactive!")
     
     url = f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{status.trigger_id}?api_key={os.getenv("API_KEY")}'
 
@@ -39,12 +38,9 @@ async def pipeline_enable_trigger(status: Status):
 
     response = requests.request("PUT", url, headers=headers, data=payload)
 
-    if response.status_code != 200:
-        return JSONResponse(status_code=response.status_code, content="Bad request!")
-    
-    if response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content="Error changing the status of the trigger!")
-    
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail="Encounter an error when changing the status of the trigger!")
+
     return JSONResponse(status_code=200, content="Trigger status changed successfully!")
 
 
@@ -62,8 +58,6 @@ async def trigger_update(trigger: UpdateTrigger):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token.token}",
     }
-
-
 
     runs_url = f"{os.getenv('BASE_URL')}/api/pipeline_runs?pipeline_uuid={trigger.pipeline_uuid}&api_key={os.getenv('API_KEY')}"
         
