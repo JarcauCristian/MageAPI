@@ -1,7 +1,7 @@
 import os
 import requests
-from fastapi import APIRouter
 from dependencies import Token
+from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 
 router = APIRouter()
@@ -14,7 +14,7 @@ async def get_kernels():
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
 
     url = f'{os.getenv("BASE_URL")}/api/kernels?api_key={os.getenv("API_KEY")}'
 
@@ -25,7 +25,7 @@ async def get_kernels():
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=response.status_code, content="Error getting the information about the Mage kernel!")
+        raise HTTPException(status_code=response.status_code, detail="Error getting the information about the Mage kernel!")
 
     returns = {
         "alive": response.json()["kernels"][0]["alive"],

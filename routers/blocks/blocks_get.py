@@ -2,7 +2,7 @@ import os
 import json
 import requests
 from dependencies import Token
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 
 router = APIRouter()
@@ -49,7 +49,7 @@ def get_template(name: str):
 
 
 
-@router.get("/mage/block/model", tags=["BLOCKS GET"])
+@router.get("/mage/block/template", tags=["BLOCKS GET"])
 async def block_model(block_name: str):
     if block_name == "export_to_minio":
             response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
@@ -57,7 +57,6 @@ async def block_model(block_name: str):
             })
 
             categories = []
-            print(response.status_code, response.json())
             if response.status_code == 200:
                 categories = response.json()
                 
@@ -75,7 +74,7 @@ async def read_block(block_name: str, pipeline_name: str):
         token.update_token()
 
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
 
     if block_name != "" and pipeline_name != "":
         headers = {
@@ -84,8 +83,8 @@ async def read_block(block_name: str, pipeline_name: str):
         response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}/blocks/{block_name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
         if response.status_code != 200 or response.json().get("error") is not None:
-            return JSONResponse(status_code=500, content=f"Error occured when reading the block {block_name}")
+            raise HTTPException(status_code=500, detail=f"Error occured when reading the block {block_name}")
 
         return JSONResponse(content=response.json(), status_code=200)
 
-    return JSONResponse(status_code=400, content="Pipeline name and Block name should not be empty!")
+    raise HTTPException(status_code=400, detail="Pipeline name and Block name should not be empty!")

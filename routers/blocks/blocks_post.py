@@ -4,7 +4,7 @@ import requests
 from typing import Annotated
 from dependencies import Token
 from starlette.responses import JSONResponse
-from fastapi import APIRouter, Form, UploadFile
+from fastapi import APIRouter, Form, UploadFile, HTTPException
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ async def block_create(block_name: Annotated[str, Form()],
         token.update_token()
 
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
 
     file_data = file.file.read().decode("utf-8").replace("\n", "\\n")
 
@@ -52,6 +52,6 @@ async def block_create(block_name: Annotated[str, Form()],
                                             f'api_key={os.getenv("API_KEY")}', headers=headers, data=payload)
     
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content=f"Error creating the block {block_name}!")
+        raise HTTPException(status_code=500, detail=f"Error creating the block {block_name}!")
 
     return JSONResponse(status_code=200, content="Block Created!")

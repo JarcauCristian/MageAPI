@@ -1,9 +1,9 @@
 import os
 import json
 import requests
-from fastapi import APIRouter
 from utils.models import Block
 from dependencies import Token
+from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 
 router = APIRouter()
@@ -17,7 +17,7 @@ async def update_block(block: Block):
         token.update_token()
 
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
 
     if block.block_name != "" and block.pipeline_name != "" and block.content != "":
         headers = {
@@ -31,8 +31,8 @@ async def update_block(block: Block):
                                                f'/blocks/{block.block_name}?api_key={os.getenv("API_KEY")}',
                                     headers=headers, data=payload)
         if response.status_code != 200:
-            return JSONResponse(status_code=500, content=f"Error updating the block {block.block_name}!")
+            raise HTTPException(status_code=500, detail=f"Error updating the block {block.block_name}!")
 
         return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
 
-    return JSONResponse(status_code=400, content="Body Should not be empty!")
+    raise HTTPException(status_code=400, detail="Body Should not be empty!")
