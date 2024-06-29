@@ -18,6 +18,7 @@ ENV API_KEY = key
 ENV EMAIL = admin@admin.com
 ENV PASSWORD = password
 ENV BASE_URL = https://mage.sedimark.work
+ENV LOCAL_IP = 127.0.0.1
 
 EXPOSE 8000 
 
