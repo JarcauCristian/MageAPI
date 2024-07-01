@@ -62,7 +62,7 @@ async def pipeline_streaming_status(pipeline_name: str):
     
 
 
-@router.get("/mage/pipeline/batch/status", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/batch_status", tags=["PIPELINES GET"])
 async def pipeline_batch_status(pipeline_id: int):
     if token.check_token_expired():
         token.update_token()
