@@ -13,7 +13,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.get("/mage/pipeline/trigger", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/triggers", tags=["PIPELINES GET"])
 async def pipeline_triggers(name: str):
     if token.check_token_expired():
         token.update_token()
