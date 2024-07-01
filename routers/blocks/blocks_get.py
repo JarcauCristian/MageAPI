@@ -49,7 +49,7 @@ def get_template(name: str):
 
 
 
-@router.get("/mage/block/template", tags=["BLOCKS GET"])
+@router.get("/mage/block/model", tags=["BLOCKS GET"])
 async def block_model(block_name: str):
     if block_name == "export_to_minio":
             response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
