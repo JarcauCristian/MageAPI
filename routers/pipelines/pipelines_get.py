@@ -61,7 +61,6 @@ async def pipeline_streaming_status(pipeline_name: str):
     return JSONResponse("active" if len(response.json()["pipeline_runs"]) != 0 else "inactive", status_code=200)
     
 
-
 @router.get("/mage/pipeline/batch_status", tags=["PIPELINES GET"])
 async def pipeline_batch_status(pipeline_id: int):
     if token.check_token_expired():

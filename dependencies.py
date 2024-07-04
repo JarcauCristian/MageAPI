@@ -4,6 +4,7 @@ import base64
 import requests
 from datetime import datetime
 
+
 class Token:
     def __init__(self):
 

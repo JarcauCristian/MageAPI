@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
+from routers.files import files_get
 
 app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs")
 clients = []
@@ -36,6 +37,8 @@ app.include_router(blocks_put.router)
 app.include_router(blocks_delete.router)
 
 app.include_router(kernels_get.router)
+
+app.include_router(files_get.router)
 
 
 @app.get("/mage", tags=["ENTRY POINT"])
