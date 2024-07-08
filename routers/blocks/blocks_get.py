@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 from dependencies import Token
@@ -26,10 +27,7 @@ def get_template(name: str):
 
     response = requests.request("GET", url, headers=headers)
 
-    if response.status_code != 200:
-        return None
-    
-    if response.json().get("error") is not None:
+    if response.status_code != 200 or response.json().get("error") is not None:
         return None
 
     content = response.json()["custom_template"]["content"]
@@ -39,34 +37,28 @@ def get_template(name: str):
     if content.find("# Variables") != -1:
         variables = dict(json.loads(content[content.find("# Variables") + 12:content.find('\n')].strip()).items())
 
+    pattern = r"\([\w\s_-]+\) "
+
+    description = re.sub(pattern, "", description)
+
     returns = {
         "content": content,
         "variables": variables,
-        "description": description.replace("(batch) ", "") if "(batch)" in description else description.replace("(stream) ", "")
+        "description": description
     }
 
     return returns
 
 
-
 @router.get("/mage/block/model", tags=["BLOCKS GET"])
 async def block_model(block_name: str):
-    if block_name == "export_to_minio":
-            response = requests.get("https://ingress.sedimark.work/neo4j/categories", headers={
-                "Authorization": f"Bearer mage_{os.getenv('NEO4J_PASSWORD')}"
-            })
+    returns = get_template(block_name)
 
-            categories = []
-            if response.status_code == 200:
-                categories = response.json()
-                
-            returns = get_template("export_to_minio")
-            returns["variables"]["category"]["values"] = categories
-            return JSONResponse(content=returns, status_code=200)
-    else:
-        returns = get_template(block_name)
-        return JSONResponse(content=returns, status_code=200)
-            
+    if returns is None:
+        raise HTTPException(500, detail="Block model could not be loaded!")
+
+    return JSONResponse(content=returns, status_code=200)
+
 
 @router.get("/mage/block/read", tags=["BLOCKS GET"])
 async def read_block(block_name: str, pipeline_name: str):
