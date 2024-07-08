@@ -10,6 +10,11 @@ class Pipeline(BaseModel):
     token: str
 
 
+class Tag(BaseModel):
+    name: str
+    tag: str
+
+
 class Description(BaseModel):
     name: str
     description: str
