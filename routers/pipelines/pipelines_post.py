@@ -7,7 +7,7 @@ from datetime import datetime
 from dependencies import Token
 from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
-from utils.models import Pipeline, Secret, Trigger, Variables
+from utils.models import Pipeline, Secret, Trigger, Variables, Tag
 
 router = APIRouter()
 
@@ -46,6 +46,36 @@ async def pipeline_create(name: str, ptype: str):
         raise HTTPException(status_code=500, detail=f"An error occurred when creating the pipeline {name}!")
 
     return JSONResponse(status_code=201, content="Pipeline Created")
+
+
+@router.post("/mage/pipeline/create/tag")
+async def pipeline_create_tag(tag: Tag):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    url = f'{os.getenv("BASE_URL")}/api/pipelines/{tag.name}?update_content=true&api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token.token}',
+        'X-API-KEY': os.getenv("API_KEY")
+    }
+
+    body = {
+        "api_key": os.getenv("API_KEY"),
+        "pipeline": {
+            "tags": [tag.tag]
+        }
+    }
+
+    response = requests.request("PUT", url, data=json.dumps(body), headers=headers)
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail=f"An error occurred when creating the tag {tag.tag}!")
+
+    return JSONResponse(status_code=201, content="Tag created successfully!")
 
 
 @router.post("/mage/pipeline/create/trigger", tags=["PIPELINES POST"])

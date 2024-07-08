@@ -114,7 +114,6 @@ async def trigger_update(trigger: UpdateTrigger):
             raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
     
     return JSONResponse(status_code=200, content=f"Trigger with id {trigger.trigger_id} updated successfully!")
-    
 
 
 @router.put("/mage/pipeline/description", tags=["PIPELINES PUT"])
