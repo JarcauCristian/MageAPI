@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 from datetime import datetime
@@ -395,7 +396,8 @@ async def description(pipeline_type: str):
 
     templates = []
     for entry in body:
-        if pipeline_type in entry["description"]:
+        pattern = r"\([\w\s_-]+\) "
+        if pipeline_type in entry["description"] or len(re.findall(pattern, entry["description"])) == 0:
             templates.append({
                 "type": entry["block_type"],
                 "name": entry["template_uuid"],
