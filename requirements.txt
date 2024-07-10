@@ -1,9 +1,11 @@
-fastapi==0.105.0
+fastapi~=0.103.2
 pandas==2.1.4
 pydantic==2.5.3
 redis==5.0.1
 requests==2.31.0
-uvicorn==0.25.0
+uvicorn~=0.23.2
 starlette==0.27.0
 python-multipart==0.0.6
 websockets
+autopep8~=2.3.1
+black~=24.4.2
