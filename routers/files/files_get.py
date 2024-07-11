@@ -11,7 +11,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.get("/mage/file/download", tags=["FILES POST"])
+@router.get("/mage/file/download", tags=["FILES GET"])
 async def download(file_name: str):
     if token.check_token_expired():
         token.update_token()

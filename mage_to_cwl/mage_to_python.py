@@ -1,112 +1,137 @@
-import re
-import ast
-from typing import Optional, List
+from mage_to_cwl.mage_to_python_utils import remove_imports_with_word, replace_code_patterns
+from pathlib import Path
+import tempfile
+import autopep8
+import black
+import os
 
 
-class MageToPythonTransformer(ast.NodeTransformer):
-    def __init__(self, word: str, decorators: List[str]) -> None:
-        self.word = word
-        self.decorators = decorators
-        self.collected_statements = []
-        self.os_import_needed = True
-        self.parent_stack = []
+class MageToPython:
+    def __init__(self, code_string: str, block_name: str, previous_block_name: str = None, input_type: str = "pandas") -> None:
+        """
+        Initializer function for MageToPython class.
+        :param code_string: The string that contains the Mage AI formatted Python code .
+        """
+        self.code_string = code_string
+        self.env_vars = None
+        self.block_name = block_name
+        self.previous_block_name = previous_block_name
+        self.input_type = input_type
+        self.output_type = None
 
-    def visit_Import(self, node: ast.Import) -> Optional[ast.Import]:
-        node.names = [alias for alias in node.names if self.word not in alias.name]
-        if not node.names:
-            return None
-        for alias in node.names:
-            if alias.name == 'os':
-                self.os_import_needed = False
-        return node
+    def _format_code_autopep8(self) -> None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as tmp_file:
+            tmp_file_path = tmp_file.name
+            tmp_file.write(self.code_string.encode())
+            tmp_file.close()
 
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> Optional[ast.ImportFrom]:
-        if node.module and self.word in node.module:
-            return None
-        if node.module == 'os':
-            self.os_import_needed = False
-        return node
+            try:
+                formatted_code = autopep8.fix_file(tmp_file_path)
+                with open(tmp_file_path, 'w') as file:
+                    file.write(formatted_code)
 
-    def visit_If(self, node: ast.If) -> Optional[ast.stmt]:
-        self.generic_visit(node)
-        if not node.body:
-            return None
-        node.body = [stmt for stmt in node.body if not isinstance(stmt, (ast.Import, ast.ImportFrom)) or stmt.names]
-        if not node.body:
-            return None
-        return node
+                with open(tmp_file_path, 'r') as file:
+                    formatted_code = file.read()
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> Optional[ast.FunctionDef]:
-        if any(decorator.id == 'test' for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
-            return None
+                self.code_string = formatted_code
 
-        if any(decorator.id in self.decorators for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
-            if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-                node.body = node.body[1:]
-            self.collected_statements.extend(node.body)
-            return None
-        return node
+            finally:
+                os.remove(tmp_file_path)
 
+    def _format_code_black(self) -> None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as tmp_file:
+            tmp_file_path = tmp_file.name
+            tmp_file.write(self.code_string.encode())
+            tmp_file.close()
 
-def remove_imports_with_word(code_string: str, word: str) -> str:
-    tree = ast.parse(code_string)
-    transformer = MageToPythonTransformer(word, ["data_loader", "transformer", "data_exporter", "sensor"])
-    cleaned_tree = transformer.visit(tree)
-    cleaned_tree = ast.fix_missing_locations(cleaned_tree)
+            try:
+                black.format_file_in_place(
+                    Path(tmp_file_path), fast=False, mode=black.FileMode(), write_back=black.WriteBack.YES
+                )
 
-    if_main_node = None
-    for node in cleaned_tree.body:
-        if isinstance(node, ast.If) and isinstance(node.test, ast.Compare):
-            if isinstance(node.test.left, ast.Name) and node.test.left.id == '__name__':
-                if isinstance(node.test.comparators[0], ast.Constant) and node.test.comparators[0].value == '__main__':
-                    if_main_node = node
-                    break
+                with open(tmp_file_path, 'r') as file:
+                    formatted_code = file.read()
 
-    if not if_main_node:
-        if_main_node = ast.If(
-            test=ast.Compare(
-                left=ast.Name(id='__name__', ctx=ast.Load()),
-                ops=[ast.Eq()],
-                comparators=[ast.Constant(value='__main__')]
-            ),
-            body=[],
-            orelse=[]
-        )
-        cleaned_tree.body.append(if_main_node)
+                self.code_string = formatted_code
 
-    if_main_node.body.extend(transformer.collected_statements)
+            finally:
+                os.remove(tmp_file_path)
 
-    # Add import os if needed
-    if transformer.os_import_needed:
-        os_import = ast.Import(names=[ast.alias(name='os', asname=None)])
-        cleaned_tree.body.insert(0, os_import)
+    def _remove_mage_imports(self) -> None:
+        self.code_string, self.env_vars = replace_code_patterns(self.code_string)
+        self.code_string, env_vars, self.output_type = remove_imports_with_word(self.code_string, "mage_ai", self.input_type, self.block_name, self.previous_block_name)
+        self.env_vars = self.env_vars + env_vars
 
-    cleaned_code = ast.unparse(cleaned_tree)
-    return cleaned_code
+    def mage_to_python(self) -> None:
+        self._remove_mage_imports()
+        self._format_code_autopep8()
+        self._format_code_black()
 
+    def __str__(self):
+        return f"MageToPython(code_string={self.code_string}, env_vars={self.env_vars}, output_type={self.output_type})"
 
-def replace_code_patterns(code_str):
-    env_vars = []
-    kwargs_pattern = r'kwargs\.get\(([^)]+)\)'
+    def __repr__(self):
+        return f"MageToPython(code_string={self.code_string}, env_vars={self.env_vars}, output_type={self.output_type})"
 
-    def kwargs_replacement(match):
-        var_name = match.group(1).strip("'\"")
-        upper_var_name = var_name.upper()
-        env_vars.append(upper_var_name)
-        return f"os.getenv('{upper_var_name}')"
-
-    modified_code_str = re.sub(kwargs_pattern, kwargs_replacement, code_str)
-
-    secret_name_pattern = r'secret_name\s*=\s*"password-" \+ os.getenv\(\'PIPELINE_NAME\'\)\s*'
-
-    modified_code_str = re.sub(secret_name_pattern, '', modified_code_str)
-
-    password_pattern = r'password\s*=\s*get_secret_value\(secret_name\)'
-
-    def password_replacement(match):
-        env_vars.append("PASSWORD")
-        return 'password = os.getenv("PASSWORD")'
-
-    modified_code_str = re.sub(password_pattern, password_replacement, modified_code_str)
-
-    return modified_code_str, env_vars
+# string = """
+# # Variables {"username":{"type":"str","description":"The username for the user to login inside the database.","regex":"^.*$"},"password":{"type":"secret","description":"The password for the user to login inside the database."},"host":{"type":"str","description":"The host address where the database resides.","regex":"^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$"},"port":{"type":"int","description":"The port on which the database runs.","range":[0,65535]},"database":{"type":"str","description":"The name of the database.","regex":"^.*$"},"collection":{"type":"str","description":"The name of the collection to load data from.","regex":"^.*$"}}
+#
+# import pandas as pd
+# from pymongo import MongoClient
+# from mage_ai.data_preparation.shared.secrets import get_secret_value
+#
+# if 'data_loader' not in globals():
+#     from mage_ai.data_preparation.decorators import data_loader
+# if 'test' not in globals():
+#     from mage_ai.data_preparation.decorators import test
+#
+# def some_other_function():
+#     print("Here!")
+#
+# @data_loader
+# def load_data_mongodb(data, *args, **kwargs):
+#     \"""
+#     Template code for loading data from a MongoDB database.
+#
+#     Args:
+#     - kwargs should include 'username', 'password', 'host', 'port', 'database', and 'table'.
+#
+#     Returns:
+#         pandas.DataFrame - Data loaded from the specified MongoDB collection.
+#     \"""
+#
+#     username = kwargs.get('username')
+#     host = kwargs.get('host')
+#     port = kwargs.get('port')
+#     database = kwargs.get('database')
+#     collection = kwargs.get('collection')
+#
+#     secret_name = "password-" + kwargs.get("PIPELINE_NAME")
+#
+#     password = get_secret_value(secret_name)
+#
+#     if None in [username, password, host, port, database, collection]:
+#         raise ValueError("All connection parameters (username, password, host, port, database, collection) must be provided.")
+#
+#     connection_string = f"mongodb://{username}:{password}@{host}:{port}/{database}"
+#
+#     client = MongoClient(connection_string)
+#     db = client[database]
+#     collection = db[collection]
+#
+#     df = pd.DataFrame(list(collection.find()))
+#
+#     return df
+#
+# @test
+# def test_output(output, *args) -> None:
+#     \"""
+#     Template code for testing the output of the block.
+#     \"""
+#     assert output is not None, 'The output is undefined'
+#     assert isinstance(output, pd.DataFrame), 'Output is not a DataFrame'
+#
+# """
+# mtp = MageToPython(string, "random", "test", "pandas")
+# mtp.mage_to_python()
+# print(mtp.code_string, mtp.env_vars, mtp.output_type)
