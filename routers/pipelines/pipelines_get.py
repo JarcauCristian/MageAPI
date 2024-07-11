@@ -7,6 +7,7 @@ from dependencies import Token
 from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 from utils.pipelines import parse_pipeline, parse_pipelines
+from mage_to_cwl.mage_to_cwl import MageToCWL
 from redis_cache.cache import get_data_from_redis, is_data_stale, set_data_in_redis, update_timestamp
 
 router = APIRouter()
@@ -242,7 +243,7 @@ async def read_full_pipeline(pipeline_name: str):
         response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
-        if response.status_code != 200:
+        if response.status_code != 200 or response.json().get("error") is not None:
             raise HTTPException(status_code=500, detail="Could not get pipeline result!")
 
         return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
@@ -405,3 +406,44 @@ async def description(pipeline_type: str):
             })
 
     return JSONResponse(content=templates, status_code=200)
+
+
+@router.get("/mage/pipeline/export")
+async def export_pipeline(pipeline_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    headers = {
+        "Authorization": f"Bearer {token.token}"
+    }
+
+    response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
+                            f'{os.getenv("API_KEY")}', headers=headers)
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail="Could not get pipeline result!")
+
+    blocks = response.json()["pipeline"]["blocks"]
+    blocks.sort(key=lambda x: (len(x['upstream_blocks']) == 0, len(x['downstream_blocks']) != 0))
+
+    sorted_data = [blocks[0]]
+
+    while len(sorted_data) < len(blocks):
+        last_uuid = sorted_data[-1]['uuid']
+        next_block = next((block for block in blocks if last_uuid in block['upstream_blocks']), None)
+        if next_block:
+            sorted_data.append(next_block)
+        else:
+            break
+
+    remaining_blocks = [block for block in blocks if block not in sorted_data]
+    sorted_data.extend(remaining_blocks)
+
+    sorted_data.reverse()
+
+    mtc = MageToCWL(sorted_data)
+    mtc.process()
+    print(mtc.files[1])
+    return JSONResponse(sorted_data, status_code=200)

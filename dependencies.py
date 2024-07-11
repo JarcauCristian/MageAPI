@@ -3,6 +3,9 @@ import json
 import base64
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Token:
@@ -32,8 +35,7 @@ class Token:
         self.token = token
         self.expires = expires
 
-
-    def update_token(self) -> None | dict[str, str]:
+    def update_token(self):
         url = os.getenv("BASE_URL") + "/api/sessions"
         headers = {
             "Content-Type": "application/json",
@@ -57,7 +59,6 @@ class Token:
         
         self.token = token
         self.expires = expires
-
 
     def check_token_expired(self) -> bool:
         provided_time = datetime.fromtimestamp(self.expires)

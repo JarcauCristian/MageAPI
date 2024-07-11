@@ -48,7 +48,7 @@ async def pipeline_create(name: str, ptype: str):
     return JSONResponse(status_code=201, content="Pipeline Created")
 
 
-@router.post("/mage/pipeline/create/tag")
+@router.post("/mage/pipeline/create/tag", tags=["PIPELINES POST"])
 async def pipeline_create_tag(tag: Tag):
     if token.check_token_expired():
         token.update_token()
@@ -98,7 +98,6 @@ async def pipeline_create_trigger(trigger: Trigger):
         "Content-Type": "application/json"
     }
 
-    payload = {}
     if trigger.trigger_type == "api":
         payload = json.dumps({
             "pipeline_schedule": {
