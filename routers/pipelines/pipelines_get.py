@@ -445,5 +445,4 @@ async def export_pipeline(pipeline_name: str):
 
     mtc = MageToCWL(sorted_data)
     mtc.process()
-    print(mtc.files[1])
-    return JSONResponse(sorted_data, status_code=200)
+    return JSONResponse(mtc.files, status_code=200)
