@@ -1,13 +1,15 @@
+import io
 import os
 import re
 import json
+import zipfile
 import requests
 from datetime import datetime
 from dependencies import Token
 from fastapi import APIRouter, HTTPException
-from starlette.responses import JSONResponse
-from utils.pipelines import parse_pipeline, parse_pipelines
 from mage_to_cwl.mage_to_cwl import MageToCWL
+from utils.pipelines import parse_pipeline, parse_pipelines
+from starlette.responses import JSONResponse, StreamingResponse
 from redis_cache.cache import get_data_from_redis, is_data_stale, set_data_in_redis, update_timestamp
 
 router = APIRouter()
@@ -443,6 +445,20 @@ async def export_pipeline(pipeline_name: str):
 
     sorted_data.reverse()
 
-    mtc = MageToCWL(sorted_data)
+    mtc = MageToCWL(sorted_data, pipeline_name)
     mtc.process()
-    return JSONResponse(mtc.files, status_code=200)
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file_path, content in mtc.files.items():
+            if content is None:
+                zipf.writestr(file_path, '')
+            else:
+                zipf.writestr(file_path, content)
+
+    zip_buffer.seek(0)
+
+    response = StreamingResponse(zip_buffer, media_type="application/x-zip-compressed")
+    response.headers["Content-Disposition"] = f"attachment; filename={pipeline_name}.zip"
+
+    return response
