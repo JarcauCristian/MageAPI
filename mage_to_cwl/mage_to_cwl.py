@@ -6,12 +6,13 @@ from mage_to_cwl.mage_to_python import MageToPython
 
 
 class MageToCWL:
-    def __init__(self, blocks: List[Dict[str, Any]]) -> None:
+    def __init__(self, blocks: List[Dict[str, Any]], pipeline_name: str) -> None:
         if len(blocks[0]["upstream_blocks"]) > 0:
             raise ValueError("First block must not have an upstream_block!")
         self.blocks = blocks
         self.results: List[MageToPython] = []
-        self.files = {"scripts/requirements/": None}
+        self.files = {f"{pipeline_name}/scripts/requirements/": None}
+        self.pipeline_name = pipeline_name
 
     def _transform_mage_to_python(self) -> None:
         for i, block in enumerate(self.blocks):
@@ -29,7 +30,6 @@ class MageToCWL:
         string = """
         cwlVersion: v1.2
         class: CommandLineTool
-        id:
         baseCommand: [bash, -c]
 
         inputs:
@@ -38,9 +38,13 @@ class MageToCWL:
             inputBinding:
               position: 1
           scripts_directory:
-            type: string
+            type: Directory
             inputBinding:
               position: 2
+          dependency:
+            type: File
+            inputBinding:
+              position: 3
 
         outputs:
           block_name:
@@ -52,7 +56,7 @@ class MageToCWL:
           - valueFrom: |
               set -e && \
               export PYTHONPATH=$2:$PYTHONPATH && \
-              python $(inputs.scripts_directory.path)/$(inputs.block_name)
+              python3 $(inputs.scripts_directory.path)/$(inputs.block_name)
         
           - position: 0
             prefix: --
@@ -65,7 +69,6 @@ class MageToCWL:
         string = """
         cwlVersion: v1.2
         class: CommandLineTool
-        id:
         baseCommand: [bash, -c]
 
         inputs:
@@ -78,7 +81,7 @@ class MageToCWL:
             inputBinding:
               position: 2
           scripts_directory:
-            type: string
+            type: Directory
             inputBinding:
               position: 3
 
@@ -92,7 +95,7 @@ class MageToCWL:
           - valueFrom: |
               set -e && \
               export PYTHONPATH=$3:$PYTHONPATH && \
-              python $(inputs.scripts_directory.path)/$(inputs.block_name)
+              python3 $(inputs.scripts_directory.path)/$(inputs.block_name)
         
           - position: 0
             prefix: --
@@ -152,11 +155,16 @@ class MageToCWL:
         cwlVersion: v1.2
         class: Workflow
         id: workflow
+        
+        requirements:
+          EnvVarRequirement:
+            envDef: {}
+        
         inputs:
           scripts_folder:
             type: Directory
         
-        outputs: []
+        outputs: {}
         
         steps:
           install_requirements:
@@ -171,9 +179,9 @@ class MageToCWL:
         self._transform_mage_to_python()
         inputs = self._inputs()
         workflow = self._workflow()
-        self.files["install_requirements.cwl"] = self._install_script()
+        self.files[f"{self.pipeline_name}/steps/install_requirements.cwl"] = self._install_script()
         for i, result in enumerate(self.results):
-            self.files[f"scripts/{result.block_name}.py"] = result.code_string
+            self.files[f"{self.pipeline_name}/scripts/{result.block_name}.py"] = result.code_string
             inputs[result.block_name] = f"{result.block_name}.py"
             workflow["inputs"][result.block_name] = {
                 "type": "string"
@@ -189,9 +197,10 @@ class MageToCWL:
                     "run": f"./steps/{result.block_name}.cwl",
                     "in": {
                         result.block_name: result.block_name,
-                        "scripts_directory": "scripts_folder"
+                        "scripts_directory": "scripts_folder",
+                        "dependency": "install_requirements/requirements_file"
                     },
-                    "out": [result.block_name]
+                    "out": f"[{result.block_name}]"
                 }
             else:
                 template = self._step_template()
@@ -205,11 +214,16 @@ class MageToCWL:
                         result.previous_block_name: result.previous_block_name,
                         "scripts_directory": "scripts_folder"
                     },
-                    "out": [result.block_name]
+                    "out": f"[{result.block_name}]"
                 }
 
-            self.files[f"steps/{result.block_name}.cwl"] = template
+            self.files[f"{self.pipeline_name}/steps/{result.block_name}.cwl"] = yaml.safe_dump(yaml.safe_load(template))
 
-        self.files[f"inputs.yml"] = yaml.safe_dump(inputs)
-        self.files[f"workflow.cwl"] = yaml.safe_dump(workflow)
+            for env in result.env_vars:
+                if "OUTPUT_FILE" in env:
+                    workflow["requirements"]["EnvVarRequirement"]["envDef"][env] = f'\"{env.split("_OUTPUT_FILE")[0].lower()}\"'
+                else:
+                    workflow["requirements"]["EnvVarRequirement"]["envDef"][env] = "\"PLACEHOLDER"
 
+        self.files[f"{self.pipeline_name}/inputs.yml"] = yaml.safe_dump(inputs)
+        self.files[f"{self.pipeline_name}/workflow.cwl"] = yaml.safe_dump(workflow)
