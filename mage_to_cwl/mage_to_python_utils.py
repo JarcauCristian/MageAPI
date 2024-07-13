@@ -4,7 +4,7 @@ from typing import Optional, List
 
 
 class MageToPythonTransformer(ast.NodeTransformer):
-    def __init__(self, word: str, decorators: List[str], block_name: str, previous_block_name: str, input_type: str = "pandas") -> None:
+    def __init__(self, word: str, decorators: List[str], block_name: str, previous_block_name: str) -> None:
         self.word = word
         self.decorators = decorators
         self.collected_statements = []
@@ -16,8 +16,6 @@ class MageToPythonTransformer(ast.NodeTransformer):
         self.previous_block_name = previous_block_name
         self.pandas_import_needed = True
         self.env_vars = []
-        self.input_type = input_type
-        self.output_type = None
 
     def visit_Import(self, node: ast.Import) -> Optional[ast.Import]:
         node.names = [alias for alias in node.names if self.word not in alias.name]
@@ -52,17 +50,6 @@ class MageToPythonTransformer(ast.NodeTransformer):
             return None
         return node
 
-        # def visit_FunctionDef(self, node: ast.FunctionDef) -> Optional[ast.FunctionDef]:
-        #     if any(decorator.id == 'test' for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
-        #         return None
-        #
-        #     if any(decorator.id in self.decorators for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
-        #         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-        #             node.body = node.body[1:]
-        #         self.collected_statements.extend(node.body)
-        #         return None
-        #     return node
-
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Optional[ast.FunctionDef]:
         if any(decorator.id == 'test' for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
             return None
@@ -75,28 +62,14 @@ class MageToPythonTransformer(ast.NodeTransformer):
             for i, stmt in enumerate(node.body):
                 if isinstance(stmt, ast.Return):
                     return_var = stmt.value
-                    if isinstance(return_var, ast.Call) and isinstance(return_var.func, ast.Attribute):
-                        if return_var.func.attr == 'to_csv':
-                            self.output_type = 'pandas'
-                        elif return_var.func.attr == 'dump':
-                            self.output_type = 'dict'
-                    elif isinstance(return_var, ast.Dict):
-                        self.output_type = 'dict'
-                    else:
-                        self.output_type = 'str'
                     function_name = self.block_name.upper() + '_OUTPUT_FILE'
                     self.env_vars.append(function_name)
                     write_to_file_code = f"""
 output_file = os.getenv("{function_name}")
 if output_file:
-    with open(output_file, 'w') as file:
-        if isinstance({ast.unparse(return_var)}, pd.DataFrame):
-            {ast.unparse(return_var)}.to_csv(file, index=False)
-        elif isinstance({ast.unparse(return_var)}, dict):
-            import json
-            json.dump({ast.unparse(return_var)}, file)
-        else:
-            file.write(str({ast.unparse(return_var)}))
+    with open(output_file, 'wb') as file:
+        import pickle
+        pickle.dump({ast.unparse(return_var)}, file)
 """
                     write_to_file_ast = ast.parse(write_to_file_code).body
                     node.body[i:i + 1] = write_to_file_ast
@@ -113,26 +86,19 @@ parser.add_argument('filename')
 args = parser.parse_args()
 
 {first_arg} = None
-input_type = "{self.input_type}"
 if args.filename:
-    with open(args.filename, 'r') as file:
-        if input_type == "pandas":
-            import pandas as pd
-            {first_arg} = pd.read_csv(file)
-        elif input_type == "dict":
-            import json
-            {first_arg} = json.load(file)
-        else:
-            {first_arg} = file.read()
+    with open(args.filename, 'rb') as file:
+        import pickle
+        {first_arg} = pickle.load(file)
 """
                 self.first_arg_statements.append(ast.parse(read_file_code).body)
             return None
         return node
 
 
-def remove_imports_with_word(code_string: str, word: str, input_type: str, block_name: str, previous_block_name: str) -> (str, list[str], str):
+def remove_imports_with_word(code_string: str, word: str, block_name: str, previous_block_name: str) -> (str, list[str], str):
     tree = ast.parse(code_string)
-    transformer = MageToPythonTransformer(word, ["data_loader", "transformer", "data_exporter", "sensor"], input_type=input_type,
+    transformer = MageToPythonTransformer(word, ["data_loader", "transformer", "data_exporter", "sensor"],
                                           block_name=block_name, previous_block_name=previous_block_name)
     cleaned_tree = transformer.visit(tree)
     cleaned_tree = ast.fix_missing_locations(cleaned_tree)
@@ -169,7 +135,7 @@ def remove_imports_with_word(code_string: str, word: str, input_type: str, block
         cleaned_tree.body.insert(1, pandas_import)
 
     cleaned_code = ast.unparse(cleaned_tree)
-    return cleaned_code, transformer.env_vars, transformer.output_type
+    return cleaned_code, transformer.env_vars
 
 
 def replace_code_patterns(code_str):
