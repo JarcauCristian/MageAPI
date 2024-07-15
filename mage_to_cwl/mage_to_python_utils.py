@@ -1,6 +1,15 @@
 import re
 import ast
+import pickle
 from typing import Optional, List
+
+
+def is_picklable(obj):
+    try:
+        pickle.dumps(obj)
+        return True
+    except TypeError:
+        return False
 
 
 class MageToPythonTransformer(ast.NodeTransformer):
@@ -59,23 +68,49 @@ class MageToPythonTransformer(ast.NodeTransformer):
             if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value,
                                                                                         ast.Str):
                 node.body = node.body[1:]
-            for i, stmt in enumerate(node.body):
-                if isinstance(stmt, ast.Return):
-                    return_var = stmt.value
-                    function_name = self.block_name.upper() + '_OUTPUT_FILE'
-                    self.env_vars.append(function_name)
-                    write_to_file_code = f"""
+
+            if any(decorator.id == 'data_exporter' for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
+                function_name = "final_output"
+                write_to_file_code = f"""
+def is_picklable(obj):
+    try:
+        pickle.dumps(obj)
+        return True
+    except:
+        return False
+        
+output_file = "{function_name}"
+if output_file:
+    import pickle
+    import matplotlib.pyplot as plt
+    import types
+    from inspect import currentframe
+    frame = currentframe()
+    variables = {{k: v for k, v in frame.f_locals.copy().items() if is_picklable(v) and (not isinstance(v, types.FunctionType) or isinstance(v, types.MethodType) or isinstance(v, types.ModuleType))}}
+    with open(output_file, 'wb') as file:
+        pickle.dump(variables, file)
+"""
+                write_to_file_ast = ast.parse(write_to_file_code).body
+                node.body[-1:] = write_to_file_ast
+                self.collected_statements.extend(node.body)
+            else:
+                for i, stmt in enumerate(node.body):
+                    if isinstance(stmt, ast.Return):
+                        return_var = stmt.value
+                        function_name = self.block_name.upper() + '_OUTPUT_FILE'
+                        self.env_vars.append(function_name)
+                        write_to_file_code = f"""
 output_file = os.getenv("{function_name}")
 if output_file:
     with open(output_file, 'wb') as file:
         import pickle
         pickle.dump({ast.unparse(return_var)}, file)
 """
-                    write_to_file_ast = ast.parse(write_to_file_code).body
-                    node.body[i:i + 1] = write_to_file_ast
-                    if isinstance(return_var, ast.Attribute) and return_var.attr == 'DataFrame':
-                        self.pandas_import_needed = True
-            self.collected_statements.extend(node.body)
+                        write_to_file_ast = ast.parse(write_to_file_code).body
+                        node.body[i:i + 1] = write_to_file_ast
+                        if isinstance(return_var, ast.Attribute) and return_var.attr == 'DataFrame':
+                            self.pandas_import_needed = True
+                self.collected_statements.extend(node.body)
 
             if len(node.args.args) > 0 and node.args.args[0].arg != '*args':
                 first_arg = node.args.args[0].arg
