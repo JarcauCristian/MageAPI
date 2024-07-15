@@ -142,7 +142,11 @@ class MageToCWL:
                 inputBinding:
                   position: 3
                   
-            outputs: []
+            outputs:
+              final_output:
+                type: File
+                outputBinding:
+                  glob: final_output
 
             arguments:
               - valueFrom: |
@@ -232,12 +236,49 @@ class MageToCWL:
         """
         return yaml.safe_load(string)
 
+    @staticmethod
+    def _result_displayer() -> str:
+        string = """import pickle
+import os
+import matplotlib.pyplot as plt
+import argparse
+
+def display_data(file_path):
+    with open(file_path, 'rb') as file:
+        data = pickle.load(file)
+    
+    for var_name, var_value in data.items():
+        if isinstance(var_value, plt.Figure):
+            os.makedirs("./figures", exist_ok=True)
+            plt.savefig(f"./figures/{var_name}.png")
+        else:
+            print(f"{var_name}: {var_value}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Display data from a pickle file.")
+    parser.add_argument('-f', '--file', required=True, help='Path to the pickle file')
+
+    args = parser.parse_args()
+    display_data(args.file)
+"""
+        return string
+
+    @staticmethod
+    def _run_script() -> str:
+        string = """#! /bin/bash
+cwltool --validate workflow.cwl inputs.yml
+cwltool workflow.cwl inputs.yml && pip install matplotlib && python3 result_displayer.py -f final_output
+"""
+        return string
+
     def process(self) -> None:
         self._transform_mage_to_python()
         yaml.representer.SafeRepresenter.add_representer(self.QuotedString, self._quoted_str_representer)
         yaml.representer.SafeRepresenter.add_representer(list, self._list_representer)
         inputs = self._inputs()
         workflow = self._workflow()
+        self.files[f"{self.pipeline_name}/result_displayer.py"] = self._result_displayer()
+        self.files[f"{self.pipeline_name}/run.sh"] = self._run_script()
         self.files[f"{self.pipeline_name}/steps/install_requirements.cwl"] = yaml.safe_dump(self._install_script(), default_flow_style=False, sort_keys=False)
         for i, result in enumerate(self.results):
             self.files[f"{self.pipeline_name}/scripts/{result.block_name}.py"] = result.code_string
@@ -257,10 +298,6 @@ class MageToCWL:
                     },
                     "out": [f"{result.block_name}_result"]
                 }
-                workflow["outputs"][f"{result.block_name}_result"] = {
-                    "type": "File",
-                    "outputSource": f"{result.block_name}/{result.block_name}_result"
-                }
             elif i == len(self.results) - 1:
                 template = self._last_step_template()
                 template = template.replace("prev_block_name", result.previous_block_name)
@@ -273,7 +310,11 @@ class MageToCWL:
                         f"{result.previous_block_name}_result": f"{result.previous_block_name}/{result.previous_block_name}_result",
                         "scripts_directory": "scripts_folder"
                     },
-                    "out": []
+                    "out": ["final_output"]
+                }
+                workflow["outputs"]["final_output"] = {
+                    "type": "File",
+                    "outputSource": f"{result.block_name}/final_output"
                 }
             else:
                 template = self._step_template()
@@ -288,10 +329,6 @@ class MageToCWL:
                         "scripts_directory": "scripts_folder"
                     },
                     "out": [f"{result.block_name}_result"]
-                }
-                workflow["outputs"][f"{result.block_name}_result"] = {
-                    "type": "File",
-                    "outputSource": f"{result.block_name}/{result.block_name}_result"
                 }
 
             self.files[f"{self.pipeline_name}/steps/{result.block_name}.cwl"] = yaml.safe_dump(yaml.safe_load(template), default_flow_style=False, sort_keys=False)
