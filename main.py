@@ -9,6 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
 from routers.files import files_get
+from routers.websock import sock
 from contextlib import asynccontextmanager
 from ollama import Client
 from rag.rag import RAGPipeline
@@ -86,6 +87,8 @@ app.include_router(blocks_delete.router)
 app.include_router(kernels_get.router)
 
 app.include_router(files_get.router)
+
+app.include_router(sock.router)
 
 
 @app.get("/mage", tags=["ENTRY POINT"])
