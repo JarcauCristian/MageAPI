@@ -60,3 +60,8 @@ class UpdateTrigger(BaseModel):
     trigger_id: int
     status: str
     pipeline_uuid: str
+
+
+class Query(BaseModel):
+    block_type: str
+    description: str
