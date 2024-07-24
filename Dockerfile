@@ -12,6 +12,8 @@ RUN apt-get update && \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install -r requirements.txt
 
 ENV API_KEY = key
