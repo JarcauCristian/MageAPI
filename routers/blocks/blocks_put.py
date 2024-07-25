@@ -1,10 +1,10 @@
 import os
 import json
 import requests
-from utils.models import Block
+from typing import Annotated
 from dependencies import Token
-from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Form, UploadFile
 
 router = APIRouter()
 
@@ -12,27 +12,47 @@ token = Token()
 
 
 @router.put("/mage/block/update", tags=["BLOCKS PUT"])
-async def update_block(block: Block):
+async def update_block(block_name: Annotated[str, Form()],
+                       block_type: Annotated[str, Form()],
+                       content: UploadFile):
     if token.check_token_expired():
         token.update_token()
 
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    if block.block_name != "" and block.pipeline_name != "" and block.content != "":
-        headers = {
-            'Accept': 'application/json, text/plain, */*',
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token.token}",
-            "X-API-KEY": os.getenv("API_KEY")
+    block_type = block_type.replace("\n", "")
+    block_name = block_name.replace("\n", "")
+
+    url = f'{os.getenv("BASE_URL")}/api/file_contents/%2Fhome%2Fsrc%2F{os.getenv("REPOSITORY_NAME")}%2F{block_type}%2F{block_name}.py?api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token.token}",
+        "X-API-KEY": os.getenv("API_KEY")
+    }
+
+    file_data = content.file.read().decode("utf-8").replace("\\n", "\n")
+
+    print(file_data)
+
+    data = {
+        "api_key": os.getenv("API_KEY"),
+        "file_content": {
+            "name": block_name,
+            "path": f"/home/src/{os.getenv('REPOSITORY_NAME')}/{block_type}/{block_name}.py",
+            "content": f"{file_data}"
         }
-        payload = f'{{"block": {{"downstream_blocks": {block.downstream_blocks}, "upstream_blocks": {block.upstream_blocks}}}}}'
-        response = requests.request("PUT", url=f'{os.getenv("BASE_URL")}/api/pipelines/{block.pipeline_name}'
-                                               f'/blocks/{block.block_name}?api_key={os.getenv("API_KEY")}',
-                                    headers=headers, data=payload)
-        if response.status_code != 200:
-            raise HTTPException(status_code=500, detail=f"Error updating the block {block.block_name}!")
+    }
 
-        return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
+    data = json.dumps(data)
 
-    raise HTTPException(status_code=400, detail="Body Should not be empty!")
+    response = requests.request("PUT", url=url, headers=headers, data=data)
+
+    print(response.status_code, response.json())
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail=f"Error updating the block {block_name}!")
+
+    return JSONResponse(status_code=200, content=f"Block {block_name} created successfully!")
