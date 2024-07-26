@@ -38,7 +38,7 @@ class RAGPipeline:
             All the python code should strictly adhere to the Mage AI block templates based on block type which is inferred from the description, and inside the decorated function add all the necessary addition to the code, including imports.
             **Example Output**
             ```
-            random_name: |
+            python_code: |
                 <Python Code>
             ```
             

@@ -1,3 +1,4 @@
+import re
 import os
 import logging
 from pathlib import Path
@@ -127,24 +128,12 @@ def add_configs(directory: str, ingester: Ingester) -> None:
 
 
 def preprocess_yaml_string(yaml_string: str) -> str:
-    lines = yaml_string.split('\n')
-    processed_lines = []
-    found = False
-    count = 0
-    for i, line in enumerate(lines):
-        if count == 2 and i < len(lines):
-            break
-        if "`" in line:
-            count += 1
-            found = True
-            continue
+    pattern = r"(python_code:\s*\|(?:\n\s{4}.+)+)"
 
-        if not found:
-            continue
+    match = re.search(pattern, yaml_string, re.DOTALL)
 
-        if "|" in line:
-            processed_lines.append('  ' + line.strip())
-        else:
-            processed_lines.append('    ' + line)
+    if match:
+        code_block = match.group(1)
+        return code_block.split("```")[0]
 
-    return '\n'.join(processed_lines)
+    return ""

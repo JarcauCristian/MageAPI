@@ -108,23 +108,30 @@ async def socket(websocket: WebSocket):
                 await websocket.send_json({"detail": "Invalid block_type. Only loader, transformer and exporter are allowed!"})
             else:
                 result_block = await get_model_response(validated_data)
-                result_code = list(result_block.values())[0]
-                linted_code = lint.process(result_code)
-                await websocket.send_bytes(linted_code.encode("utf-8"))
+
+                if result_block == "":
+                    await websocket.send_json({"error": "Could not receive generated block from LLM. Please try again!"})
+                else:
+                    linted_code = lint.process(result_block)
+                    await websocket.send_bytes(linted_code.encode("utf-8"))
     except WebSocketDisconnect:
         await websocket.send_json({"detail": "Websocket disconnect successfully!"})
     except ValidationError:
         await websocket.send_json({"detail": "JSON validation error!"})
 
 
-async def get_model_response(query: Query) -> Dict[str, Any]:
+async def get_model_response(query: Query) -> str:
     result = rag.invoke(query.description)
 
-    string = utils.preprocess_yaml_string(result["result"])
+    code = utils.preprocess_yaml_string(result["result"])
+    print(code)
 
-    parsed_data = yaml.safe_load(string)
+    if code == "":
+        return ""
 
-    return parsed_data
+    yaml_response = yaml.safe_load(code)
+
+    return yaml_response["python_code"]
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0")
