@@ -1,7 +1,6 @@
 import uvicorn
 from pydantic import ValidationError
 import yaml
-from typing import Dict, Any
 from routers.kernels import kernels_get
 from starlette.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,7 +112,7 @@ async def socket(websocket: WebSocket):
                     await websocket.send_json({"error": "Could not receive generated block from LLM. Please try again!"})
                 else:
                     linted_code = lint.process(result_block)
-                    await websocket.send_bytes(linted_code.encode("utf-8"))
+                    await websocket.send_text(linted_code)
     except WebSocketDisconnect:
         await websocket.send_json({"detail": "Websocket disconnect successfully!"})
     except ValidationError:
