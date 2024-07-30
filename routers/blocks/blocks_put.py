@@ -75,6 +75,6 @@ async def update_block(block_name: Annotated[str, Form()],
     response = requests.request("PUT", url=url, headers=headers, data=data)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Error updating the block {block_name}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
 
     return JSONResponse(status_code=200, content=f"Block {block_name} created successfully!")

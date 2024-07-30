@@ -22,11 +22,10 @@ async def delete_block(block: DeleteBlock):
         raise HTTPException(status_code=400, detail="Block should not be empty!")
 
     response = requests.delete(f'{os.getenv("base_url")}/api/pipelines/{block.pipeline_name}/'
-                                          f'blocks/{block.block_name}?block_type={block.block_type}&'
-                                          f'api_key={os.getenv("API_KEY")}&force={block.force}')
+                               f'blocks/{block.block_name}?block_type={block.block_type}&'
+                               f'api_key={os.getenv("API_KEY")}&force={block.force}')
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Error occurred when deleting the block {block.block_name}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
 
     return JSONResponse(status_code=200, content="Block Deleted!")
-

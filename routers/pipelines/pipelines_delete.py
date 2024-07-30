@@ -27,7 +27,7 @@ async def delete_pipeline(name: str):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=response.status_code, detail="Could not get triggers!")
+        raise HTTPException(status_code=response.status_code, detail=response.json().get("error")["exception"])
 
     headers = {
         "Content-Type": "application/json",
@@ -37,14 +37,14 @@ async def delete_pipeline(name: str):
 
     error_queue = Queue()
 
-    def delete_schedule(schedule_id: int, headers: dict[str, str]) -> None:
-        response = requests.request(
+    def delete_schedule(schedule_id: int, head: dict[str, str]) -> None:
+        resp = requests.request(
             "DELETE",
             f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{schedule_id}?api_key={os.getenv("API_KEY")}',
-            headers=headers
+            headers=head
         )
 
-        if response.status_code != 200 or response.json().get("error") is not None:
+        if resp.status_code != 200 or resp.json().get("error") is not None:
             error_queue.put(schedule_id)
 
     pipeline_schedules = response.json()["pipeline_schedules"] if len(
@@ -71,6 +71,6 @@ async def delete_pipeline(name: str):
     response = requests.request("DELETE", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Encounter an error when deleting pipeline {name}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content="Pipeline deleted successfully!")
