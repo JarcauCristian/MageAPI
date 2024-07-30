@@ -19,7 +19,7 @@ async def block_create(block_name: Annotated[str, Form()],
                        upstream_blocks: Annotated[list[str], Form()],
                        language: Annotated[str, Form()],
                        file: UploadFile
-    ):
+                       ):
 
     if token.check_token_expired():
         token.update_token()
@@ -52,7 +52,7 @@ async def block_create(block_name: Annotated[str, Form()],
                                             f'api_key={os.getenv("API_KEY")}', headers=headers, data=payload)
     
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Error creating the block {block_name}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
 
     return JSONResponse(status_code=200, content="Block Created!")
 
@@ -98,7 +98,7 @@ async def create_template(block_type: Annotated[str, Form()],
     response = requests.request("POST", url, data=data, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Could not create the template.")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
 
     url = f'{os.getenv("BASE_URL")}/api/custom_templates/{name}?object_type=blocks&api_key={os.getenv("API_KEY")}'
 
@@ -128,7 +128,6 @@ async def create_template(block_type: Annotated[str, Form()],
     response = requests.request("PUT", url, data=data, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Could not update the template.")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
 
     return JSONResponse(f"Template {name} created successfully!", status_code=200)
-

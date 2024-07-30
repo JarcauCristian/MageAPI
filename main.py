@@ -1,24 +1,24 @@
-import uvicorn
-from pydantic import ValidationError
-import yaml
-from routers.kernels import kernels_get
-from starlette.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
-from routers.files import files_get
-from routers.websock import sock
+from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 from contextlib import asynccontextmanager
-from ollama import Client
-from rag.rag import RAGPipeline
+from routers.kernels import kernels_get
+from pydantic import ValidationError
+from routers.files import files_get
 from rag.ingester import Ingester
+from routers.websock import sock
+from rag.rag import RAGPipeline
 from utils.linter import Linter
+from utils.models import Query
+from ollama import Client
 import rag.utils as utils
 from pathlib import Path
-from utils.models import Query
-import os
 import chromadb
+import uvicorn
+import yaml
+import os
 
 
 @asynccontextmanager
@@ -123,7 +123,6 @@ async def get_model_response(query: Query) -> str:
     result = rag.invoke(query.description)
 
     code = utils.preprocess_yaml_string(result["result"])
-    print(code)
 
     if code == "":
         return ""

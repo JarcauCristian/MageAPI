@@ -25,7 +25,7 @@ async def get_kernels():
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=response.status_code, detail="Error getting the information about the Mage kernel!")
+        raise HTTPException(status_code=response.status_code, detail=response.json().get("error")["message"])
 
     returns = {
         "alive": response.json()["kernels"][0]["alive"],

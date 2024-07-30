@@ -39,7 +39,7 @@ async def pipeline_enable_trigger(status: Status):
     response = requests.request("PUT", url, headers=headers, data=payload)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Encounter an error when changing the status of the trigger!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content="Trigger status changed successfully!")
 
@@ -64,7 +64,7 @@ async def trigger_update(trigger: UpdateTrigger):
     runs_response = requests.request("GET", runs_url, headers=headers)
 
     if runs_response.status_code != 200 or runs_response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
+        raise HTTPException(status_code=500, detail=runs_response.json().get("error")["exception"])
     
     last_run_id = None
     if len(runs_response.json()["pipeline_runs"]) != 0:
@@ -73,7 +73,7 @@ async def trigger_update(trigger: UpdateTrigger):
     if trigger.status == "start" and last_run_id is not None:
         raise HTTPException(status_code=400, detail="The trigger is already started!")
     elif trigger.status == "stop" and last_run_id is None:
-        raise HTTPException(status_code=400, detail="The trigger is already stoped!")
+        raise HTTPException(status_code=400, detail="The trigger is already stopped!")
 
     if trigger.status == "start":
         body = {
@@ -89,7 +89,7 @@ async def trigger_update(trigger: UpdateTrigger):
         response = requests.request("PUT", url, headers=headers, data=json.dumps(body, indent=4))
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
     elif trigger.status == "stop":
         body = {
             "api_key": os.getenv('API_KEY'),
@@ -104,14 +104,14 @@ async def trigger_update(trigger: UpdateTrigger):
         response = requests.request("PUT", url, headers=headers, data=json.dumps(body, indent=4))
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         url = f"{os.getenv('BASE_URL')}/api/pipeline_runs/{last_run_id}?api_key={os.getenv('API_KEY')}"
 
         response = requests.request("DELETE", url, headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail=f"Recived error when updating the status of the trigger with id: {trigger.trigger_id}!")
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
     
     return JSONResponse(status_code=200, content=f"Trigger with id {trigger.trigger_id} updated successfully!")
 
@@ -142,7 +142,6 @@ async def put_description(desc: Description):
     response = requests.request("PUT", url, headers=headers, data=payload)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=500, content=f"Error updating the description of {desc.name}!")
+        return JSONResponse(status_code=500, content=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content="Pipeline updated successfully!")
-

@@ -43,7 +43,7 @@ async def pipeline_create(name: str, ptype: str):
     response = requests.post(url, headers=headers, data=json.dumps(data))
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"An error occurred when creating the pipeline {name}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=201, content="Pipeline Created")
 
@@ -73,7 +73,7 @@ async def pipeline_create_tag(tag: Tag):
     response = requests.request("PUT", url, data=json.dumps(body), headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"An error occurred when creating the tag {tag.tag}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=201, content="Tag created successfully!")
 
@@ -121,7 +121,7 @@ async def pipeline_create_trigger(trigger: Trigger):
     response = requests.request("POST", url, headers=headers, data=payload)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Encounter and error when creating the trigger!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content="Trigger created successfully!")
 
@@ -153,7 +153,7 @@ async def run_pipeline(pipe: Pipeline):
     response = requests.post(url, headers=headers, data=json.dumps(body, indent=4))
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Starting the pipeline didn't work!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=201, content="Pipeline Started Successfully!")
 
@@ -227,6 +227,6 @@ async def create_secret(secret: Secret):
     response = requests.request("POST", url, headers=headers, json=body)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Could not create the secret!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
     
     return JSONResponse(status_code=200, content="Secret created successfully!")

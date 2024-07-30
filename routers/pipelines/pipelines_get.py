@@ -33,7 +33,7 @@ async def pipeline_triggers(name: str):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Error getting the trigger for {name}")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     returns = {
         "id": response.json()["pipeline_schedules"][0]["id"],
@@ -61,7 +61,7 @@ async def pipeline_streaming_status(pipeline_name: str):
 
     if response.status_code != 200 or response.json().get("error") is not None:
         raise HTTPException(status_code=500,
-                            detail=f"Received error when getting the status for pipeline {pipeline_name}!")
+                            detail=response.json().get("error")["exception"])
 
     return JSONResponse("active" if len(response.json()["pipeline_runs"]) != 0 else "inactive", status_code=200)
 
@@ -82,7 +82,7 @@ async def pipeline_batch_status(pipeline_id: int):
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=f"Error getting the status of the pipeline with id {pipeline_id}!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     body = json.loads(response.content.decode('utf-8'))['pipeline_runs']
 
@@ -111,8 +111,8 @@ async def pipelines(tag: str):
 
     response = requests.get(pipelines_url, headers=headers)
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="An error occurred when getting the pipelines!")
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     names = []
     for pipe in response.json()["pipelines"]:
@@ -140,8 +140,8 @@ async def specific_pipelines(contains: str, changed: bool = False):
         response = requests.request("GET", url, headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            return JSONResponse(status_code=response.status_code,
-                                content=f"Error getting the pipelines for user with id {contains}!")
+            raise HTTPException(status_code=500,
+                                detail=response.json().get("error")["exception"])
 
         if len(response.json().get("pipelines")) == 0:
             return JSONResponse(status_code=200, content=[])
@@ -170,7 +170,7 @@ async def specific_pipelines(contains: str, changed: bool = False):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
-        return JSONResponse(status_code=500, content="Could not get the token!")
+        raise HTTPException(status_code=500, detail="Could not get the token!")
 
     url = f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}'
     headers = {
@@ -181,8 +181,8 @@ async def specific_pipelines(contains: str, changed: bool = False):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        return JSONResponse(status_code=response.status_code,
-                            content=f"Error getting the pipelines for user with id {contains}!")
+        raise HTTPException(status_code=500,
+                            detail=response.json().get("error")["exception"])
 
     if len(response.json().get("pipelines")) == 0:
         return JSONResponse(status_code=200, content=[])
@@ -220,8 +220,8 @@ async def read_pipeline(pipeline_name: str):
         response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
-        if response.status_code != 200:
-            raise HTTPException(status_code=500, detail="Could not get pipeline result!")
+        if response.status_code != 200 or response.json().get("error") is not None:
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         result = parse_pipeline(response.json().get("pipeline"))
 
@@ -246,7 +246,7 @@ async def read_full_pipeline(pipeline_name: str):
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail="Could not get pipeline result!")
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
 
@@ -271,7 +271,7 @@ async def read_full_pipeline(model_name: str):
                                 headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail="Could not get pipeline result!")
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         return_pipeline = None
         for pipeline in response.json()["pipelines"]:
@@ -304,7 +304,7 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(detail=f"Error getting the information's for {pipeline_name}!", status_code=500)
+        raise HTTPException(detail=response.json().get("error")["exception"], status_code=500)
 
     run_id = None
     for schedule in response.json()["pipeline_schedules"]:
@@ -319,7 +319,7 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(detail=f"Error getting the history of runs for {pipeline_name}!", status_code=500)
+        raise HTTPException(detail=response.json().get("error")["exception"], status_code=500)
 
     returns = []
 
@@ -371,7 +371,7 @@ async def description(name: str):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Error getting pipeline's description!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content=response.json()["pipeline"]["description"])
 
@@ -393,7 +393,7 @@ async def description(pipeline_type: str):
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(detail="Could not load the templates!", status_code=500)
+        raise HTTPException(detail=response.json().get("error")["exception"], status_code=500)
 
     body = response.json()["custom_templates"]
 
@@ -425,7 +425,7 @@ async def export_pipeline(pipeline_name: str):
                             f'{os.getenv("API_KEY")}', headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Could not get pipeline result!")
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     blocks = response.json()["pipeline"]["blocks"]
     blocks.sort(key=lambda x: (len(x['upstream_blocks']) == 0, len(x['downstream_blocks']) != 0))
