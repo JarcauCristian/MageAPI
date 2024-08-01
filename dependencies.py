@@ -6,7 +6,7 @@ from datetime import datetime
 
 
 class Token:
-    def __init__(self):
+    def __init__(self) -> None:
 
         url = os.getenv("BASE_URL") + "/api/sessions"
         headers = {
@@ -32,7 +32,7 @@ class Token:
         self.token = token
         self.expires = expires
 
-    def update_token(self):
+    def update_token(self) -> None:
         url = os.getenv("BASE_URL") + "/api/sessions"
         headers = {
             "Content-Type": "application/json",
