@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from contextlib import asynccontextmanager
 from routers.kernels import kernels_get
+from utils.models import Query, Server
 from pydantic import ValidationError
 from routers.files import files_get
 from rag.ingester import Ingester
 from routers.websock import sock
 from rag.rag import RAGPipeline
 from utils.linter import Linter
-from utils.models import Query
 from ollama import Client
 import rag.utils as utils
 from pathlib import Path
@@ -93,6 +93,14 @@ app.include_router(sock.router)
 @app.get("/mage", tags=["ENTRY POINT"])
 async def entry():
     return JSONResponse(content="Hello from server!", status_code=200)
+
+
+@app.post("/mage/server/set", tags=["SERVER"])
+async def server_set(server: Server):
+    os.environ["BASE_URL"] = server.base_url
+    os.environ["EMAIL"] = server.email
+    os.environ["PASSWORD"] = server.password
+    return JSONResponse(content="Changed configuration to new Mage server!", status_code=200)
 
 
 @app.websocket("/mage/block/generate")

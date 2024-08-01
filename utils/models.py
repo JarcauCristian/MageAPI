@@ -65,3 +65,9 @@ class UpdateTrigger(BaseModel):
 class Query(BaseModel):
     block_type: str
     description: str
+
+
+class Server(BaseModel):
+    email: str
+    password: str
+    base_url: str
