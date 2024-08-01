@@ -26,6 +26,6 @@ async def delete_block(block: DeleteBlock):
                                f'api_key={os.getenv("API_KEY")}&force={block.force}')
 
     if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     return JSONResponse(status_code=200, content="Block Deleted!")

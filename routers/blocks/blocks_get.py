@@ -76,7 +76,7 @@ async def read_block(block_name: str, pipeline_name: str):
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail=response.json().get("error")["message"])
+            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         return JSONResponse(content=response.json(), status_code=200)
 
