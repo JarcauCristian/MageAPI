@@ -97,9 +97,15 @@ async def entry():
 
 @app.post("/mage/server/set", tags=["SERVER"])
 async def server_set(server: Server):
-    os.environ["BASE_URL"] = server.base_url
-    os.environ["EMAIL"] = server.email
-    os.environ["PASSWORD"] = server.password
+    if server.base_url is None and server.email is None and server.password is None:
+        return JSONResponse("Server configuration not modified!", 304)
+
+    if server.base_url is not None:
+        os.environ["BASE_URL"] = server.base_url
+    if server.email is not None:
+        os.environ["EMAIL"] = server.email
+    if server.password is not None:
+        os.environ["PASSWORD"] = server.password
     return JSONResponse(content="Changed configuration to new Mage server!", status_code=200)
 
 

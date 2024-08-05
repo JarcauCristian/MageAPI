@@ -1,7 +1,6 @@
 import datetime
-from typing import Any, Dict, List, Optional
-
 from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
 
 
 class Pipeline(BaseModel):
@@ -68,6 +67,6 @@ class Query(BaseModel):
 
 
 class Server(BaseModel):
-    email: str
-    password: str
-    base_url: str
+    email: Optional[str] = None
+    password: Optional[str] = None
+    base_url: Optional[str] = None
