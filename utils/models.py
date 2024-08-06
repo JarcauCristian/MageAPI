@@ -70,3 +70,8 @@ class Server(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     base_url: Optional[str] = None
+
+
+class Rename(BaseModel):
+    current_name: str
+    new_name: str
