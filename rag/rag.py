@@ -1,6 +1,7 @@
 from ollama import Client
 from rag.embed import Embed
 from typing import Dict, Any
+from rag.memory import Memory
 from chromadb import PersistentClient
 from langchain_community.llms.ollama import Ollama
 from langchain_community.vectorstores import Chroma
@@ -30,6 +31,8 @@ class RAGPipeline:
             return_source_documents=True,
         )
 
+        self.memory = Memory()
+
     @staticmethod
     def build_prompt(data: str) -> str:
         return '''
@@ -48,10 +51,23 @@ class RAGPipeline:
             data
         )
 
-    def invoke(self, description: str, query_filter: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        self.rag = RetrievalQA.from_chain_type(
-            self.ollama_llm,
-            retriever=self.db_retriever.as_retriever(search_type="mmr", search_kwargs={'k': 6}),
-            return_source_documents=True,
-        )
-        return self.rag.invoke({"query": self.build_prompt(description)})
+    def invoke(self, session_id: str, description: str) -> Dict[str, Any]:
+        query = self.build_prompt(description)
+
+        # Check session memory first
+        memory_response = self.memory.retrieve_interaction(session_id, query)
+        if memory_response:
+            return {"result": memory_response["answer"], "source_documents": []}
+
+        session_context = self.memory.get_session_context(session_id)
+        full_query = f"{session_context}\n{query}"
+
+        response = self.rag.invoke({"query": full_query})
+        answer = response['result']
+
+        self.memory.store_interaction(session_id, query, answer)
+
+        return response
+
+    def clear_session(self, session_id: str):
+        self.memory.clear_session(session_id)
