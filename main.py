@@ -112,6 +112,7 @@ async def server_set(server: Server):
 @app.websocket("/mage/block/generate")
 async def socket(websocket: WebSocket):
     await websocket.accept()
+    validated_data = None
     try:
         while True:
             data = await websocket.receive_json()
@@ -128,13 +129,15 @@ async def socket(websocket: WebSocket):
                     linted_code = lint.process(result_block)
                     await websocket.send_text(linted_code)
     except WebSocketDisconnect:
+        if validated_data is not None:
+            rag.clear_session(validated_data.block_type)
         await websocket.send_json({"detail": "Websocket disconnect successfully!"})
     except ValidationError:
         await websocket.send_json({"detail": "JSON validation error!"})
 
 
 async def get_model_response(query: Query) -> str:
-    result = rag.invoke(query.description)
+    result = rag.invoke(query.user_id, query.description)
 
     code = utils.preprocess_yaml_string(result["result"])
 
