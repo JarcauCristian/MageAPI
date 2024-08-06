@@ -4,12 +4,41 @@ import requests
 from dependencies import Token
 from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
-from utils.models import Status, Description, UpdateTrigger
+from utils.models import Status, Description, UpdateTrigger, Rename
 
 
 router = APIRouter()
 
 token = Token()
+
+
+@router.put("/mage/pipeline/rename")
+async def rename_pipeline(rename: Rename):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    url = f'{os.getenv("BASE_URL")}/api/pipelines/{rename.current_name}?api_key={os.getenv("API_KEY")}'
+
+    data = {
+        "api_key": os.getenv("API_KEY"),
+        "pipeline": {
+            "uuid": rename.current_name,
+            "name": rename.new_name
+        }
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token.token}"
+    }
+
+    response = requests.request("PUT", url, headers=headers, json=data)
+
+    if response.status_code != 200 or response.json().get("error") is not None:
+        raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
+
+    return JSONResponse(status_code=200, content="Pipeline renamed successfully!")
 
 
 @router.put("/mage/pipeline/trigger/status", tags=["PIPELINES PUT"])
