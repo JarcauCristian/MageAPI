@@ -1,17 +1,19 @@
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form, UploadFile, HTTPException
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+from routers.websock import sock as websock
 from contextlib import asynccontextmanager
 from routers.kernels import kernels_get
 from utils.models import Query, Server
 from pydantic import ValidationError
 from routers.files import files_get
+from routers.validate import sock
 from rag.ingester import Ingester
-from routers.websock import sock
 from rag.rag import RAGPipeline
 from utils.linter import Linter
+from typing import Annotated
 from ollama import Client
 import rag.utils as utils
 from pathlib import Path
@@ -87,6 +89,8 @@ app.include_router(kernels_get.router)
 
 app.include_router(files_get.router)
 
+app.include_router(websock.router)
+
 app.include_router(sock.router)
 
 
@@ -107,6 +111,21 @@ async def server_set(server: Server):
     if server.password is not None:
         os.environ["PASSWORD"] = server.password
     return JSONResponse(content="Changed configuration to new Mage server!", status_code=200)
+
+
+@app.post("/mage/rag/add", tags=["BLOCKS POST"])
+async def add_rag(block_type: Annotated[str, Form()],
+                  name: Annotated[str, Form()],
+                  description: Annotated[str, Form()],
+                  file: UploadFile):
+    file_data = file.file.read().decode("utf-8").replace("\n", "\\n")
+
+    try:
+        ing.ingest(file_data, f"{name}.py", block_type, description, os.getenv("CHROMA_COLLECTION"))
+    except:
+        raise HTTPException(detail="Encountered an error when ingesting data in the RAG. ", status_code=500)
+
+    return JSONResponse(content="Ingestion completed successfully!", status_code=200)
 
 
 @app.websocket("/mage/block/generate")

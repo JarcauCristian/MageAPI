@@ -12,7 +12,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.put("/mage/pipeline/rename")
+@router.put("/mage/pipeline/rename", tags=["PIPELINES PUT"])
 async def rename_pipeline(rename: Rename):
     if token.check_token_expired():
         token.update_token()

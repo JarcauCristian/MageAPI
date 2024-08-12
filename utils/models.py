@@ -76,3 +76,8 @@ class Server(BaseModel):
 class Rename(BaseModel):
     current_name: str
     new_name: str
+
+
+class Validate(BaseModel):
+    block_type: str
+    content: str
