@@ -3,8 +3,6 @@ import json
 import base64
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
-load_dotenv()
 
 
 class Token:
@@ -23,6 +21,7 @@ class Token:
         }
 
         response = requests.post(url, data=json.dumps(data), headers=headers)
+
         token = ""
         expires = 0.0
         if response.status_code == 200:

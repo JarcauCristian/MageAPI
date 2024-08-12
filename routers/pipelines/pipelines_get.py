@@ -410,7 +410,7 @@ async def description(pipeline_type: str):
     return JSONResponse(content=templates, status_code=200)
 
 
-@router.get("/mage/pipeline/export")
+@router.get("/mage/pipeline/export", tags=["PIPELINES GET"])
 async def export_pipeline(pipeline_name: str):
     if token.check_token_expired():
         token.update_token()

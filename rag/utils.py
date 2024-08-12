@@ -51,7 +51,7 @@ def add_loaders(directory: str, ingester: Ingester) -> None:
         logging.info("Creating embeddings for %s" % path.name)
         with open(path, "r") as f:
             file_content = f.read()
-            ingester.ingest(file_content, path.name, "loader", etl_loader_descriptions[path.name], os.getenv("CHROMA_COLLECTION"))
+            ingester.ingest(file_content, path.name, "data_loader", etl_loader_descriptions[path.name], os.getenv("CHROMA_COLLECTION"))
 
 
 def add_transformers(directory: str, ingester: Ingester) -> None:
@@ -111,7 +111,7 @@ def add_exporters(directory: str, ingester: Ingester) -> None:
         with open(path, "r") as f:
             file_content = f.read()
 
-        ingester.ingest(file_content, path.name, "exporter", exporter_descriptions[path.name],
+        ingester.ingest(file_content, path.name, "data_exporter", exporter_descriptions[path.name],
                         os.getenv("CHROMA_COLLECTION"))
 
 
