@@ -150,7 +150,7 @@ async def run_pipeline(pipe: Pipeline):
     for k, v in pipe.variables.items():
         body['pipeline_run']['variables'][k] = v
 
-    response = requests.post(url, headers=headers, data=json.dumps(body, indent=4))
+    response = requests.post(url, headers=headers, json=body)
 
     if response.status_code != 200 or response.json().get("error") is not None:
         raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
