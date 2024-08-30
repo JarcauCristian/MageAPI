@@ -4,6 +4,7 @@ import re
 import json
 import zipfile
 import requests
+from typing import Optional
 from datetime import datetime
 from dependencies import Token
 from fastapi import APIRouter, HTTPException
@@ -93,16 +94,18 @@ async def pipeline_batch_status(pipeline_id: int):
 
 
 @router.get("/mage/pipelines", tags=["PIPELINES GET"])
-async def pipelines(tag: str):
+async def pipelines(tag: Optional[str] = None):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    if tag not in ["train", "data_preprocessing", "streaming"]:
+    valid_tags = ["train", "data_preprocessing", "streaming"]
+
+    if tag and tag not in valid_tags:
         raise HTTPException(status_code=400, detail="tag parameter should be train, data_preprocessing or streaming.")
 
-    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?tag[]={tag}&api_key={os.getenv("API_KEY")}'
+    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?api_key={os.getenv("API_KEY")}' if not tag else os.getenv('BASE_URL') + f'/api/pipelines?tag[]={tag}&api_key={os.getenv("API_KEY")}'
 
     headers = {
         'Content-Type': 'application/json',
@@ -116,6 +119,10 @@ async def pipelines(tag: str):
 
     names = []
     for pipe in response.json()["pipelines"]:
+        if not tag:
+            if len(pipe["tags"]) > 0:
+                if pipe["tags"][0] not in valid_tags:
+                    continue
         names.append(pipe.get("name"))
 
     return JSONResponse(status_code=200, content=names)
