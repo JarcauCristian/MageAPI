@@ -463,7 +463,7 @@ async def export_pipeline(pipeline_name: str):
             else:
                 zipf.writestr(file_path, content)
 
-    if zip_buffer.tell() > 100 * 1024 * 1024:
+    if zip_buffer.tell() > 100 * 1024:
         raise HTTPException(detail="Output zip is to big for exporting!", status_code=500)
 
     zip_buffer.seek(0)
