@@ -156,16 +156,17 @@ async def socket(websocket: WebSocket):
 
 
 async def get_model_response(query: Query) -> str:
-    result = rag.invoke(query.user_id, query.description)
+    block = f"[block_type={query.block_type}] {query.description}"
+    result = rag.invoke(block)
 
-    code = utils.preprocess_yaml_string(result["result"])
+    print(result)
+
+    code = utils.preprocess_string(result)
 
     if code == "":
         return ""
 
-    yaml_response = yaml.safe_load(code)
-
-    return yaml_response["python_code"]
+    return code
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0")

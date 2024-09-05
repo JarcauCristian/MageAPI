@@ -127,13 +127,13 @@ def add_configs(directory: str, ingester: Ingester) -> None:
                         os.getenv("CHROMA_COLLECTION"))
 
 
-def preprocess_yaml_string(yaml_string: str) -> str:
-    pattern = r"(python_code:\s*\|(?:\n\s{4}.+)+)"
+def preprocess_string(string: str) -> str:
+    pattern = r"<output>(.*?)</output>"
 
-    match = re.search(pattern, yaml_string, re.DOTALL)
+    matches = re.findall(pattern, string, re.DOTALL)
 
-    if match:
-        code_block = match.group(1)
-        return code_block.split("```")[0]
+    if matches:
+        code_block = matches[0].strip()
+        return code_block
 
     return ""
