@@ -123,6 +123,8 @@ async def pipelines(tag: Optional[str] = None):
             if len(pipe["tags"]) > 0:
                 if pipe["tags"][0] not in valid_tags:
                     continue
+            else:
+                continue
         names.append(pipe.get("uuid"))
 
     return JSONResponse(status_code=200, content=names)
