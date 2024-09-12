@@ -469,8 +469,17 @@ async def export_pipeline(pipeline_name: str):
             else:
                 zipf.writestr(file_path, content)
 
-    if zip_buffer.tell() > 100 * 1024:
-        raise HTTPException(detail="Output zip is to big for exporting!", status_code=500)
+        if files is not None:
+            for file_info in files:
+                try:
+                    file_content = download_file(file_info["encoded_path"], token.token)
+
+                    zipf.writestr(pipeline_name + "/" + file_info["full_path"], file_content)
+
+                except Exception as e:
+                    print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")
+                    raise HTTPException(status_code=500,
+                                        detail=f"Failed to download or add {file_info['full_path']} to zip!")
 
     zip_buffer.seek(0)
 
@@ -521,7 +530,10 @@ def parse_file_structure(node, current_path=""):
         # Build full path and URL encode it
         full_path = f"{current_path}/{node['name']}".lstrip("/")
         encoded_path = urllib.parse.quote(full_path)
-        files.append(encoded_path)
+        files.append({
+            "encoded_path": encoded_path,
+            "full_path": full_path
+        })
 
     if "children" in node:
         for child in node["children"]:
