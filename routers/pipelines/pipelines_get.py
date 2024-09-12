@@ -4,6 +4,7 @@ import re
 import json
 import zipfile
 import requests
+import urllib.parse
 from typing import Optional
 from datetime import datetime
 from dependencies import Token
@@ -436,6 +437,9 @@ async def export_pipeline(pipeline_name: str):
     if response.status_code != 200 or response.json().get("error") is not None:
         raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
+    repository_name = get_repo_name(local_token=token.token)
+    files = get_utils_folder(local_token=token.token)
+
     blocks = response.json()["pipeline"]["blocks"]
     blocks.sort(key=lambda x: (len(x['upstream_blocks']) == 0, len(x['downstream_blocks']) != 0))
 
@@ -454,7 +458,7 @@ async def export_pipeline(pipeline_name: str):
 
     sorted_data.reverse()
 
-    mtc = MageToCWL(sorted_data, pipeline_name)
+    mtc = MageToCWL(sorted_data, pipeline_name, repository_name)
     mtc.process()
     zip_buffer = io.BytesIO()
 
@@ -474,3 +478,76 @@ async def export_pipeline(pipeline_name: str):
     response.headers["Content-Disposition"] = f"attachment; filename={pipeline_name}.zip"
 
     return response
+
+
+def get_repo_name(local_token: str) -> str | None:
+    url = f'{os.getenv("BASE_URL")}/api/statuses?api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        "Authorization": f"Bearer {local_token}"
+    }
+
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code not in [200, 304] or response.json().get("error"):
+        return
+
+    if response.json().get("statuses"):
+        if len(response.json().get("statuses")) > 0:
+            return response.json().get("statuses")[0]["repo_path_relative"]
+
+    return
+
+
+def download_file(encoded_file_name: str, local_token: str):
+    url = f'{os.getenv("BASE_URL")}/api/file_contents/{encoded_file_name}?api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        "Authorization": f"Bearer {local_token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code not in [200, 304]:
+        raise ValueError(f"Could not retrieve the file contents for {encoded_file_name}!")
+
+    return response.json()["file_content"]["content"].encode('utf-8')
+
+
+def parse_file_structure(node, current_path=""):
+    files = []
+
+    if "children" not in node and not node.get("disabled", False):
+        # Build full path and URL encode it
+        full_path = f"{current_path}/{node['name']}".lstrip("/")
+        encoded_path = urllib.parse.quote(full_path)
+        files.append(encoded_path)
+
+    if "children" in node:
+        for child in node["children"]:
+            files.extend(parse_file_structure(child, f"{current_path}/{node['name']}"))
+
+    return files
+
+
+def get_utils_folder(local_token: str):
+    url = f'{os.getenv("BASE_URL")}/api/files?include_pipeline_count=true&api_key={os.getenv("API_KEY")}'
+
+    headers = {
+        "Authorization": f"Bearer {local_token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code not in [200, 304] or response.json().get("error"):
+        return None
+
+    file_names = None
+
+    files_data = response.json().get("files", [])
+    if files_data:
+        for file in files_data[0].get("children", []):
+            if file["name"] == "utils":
+                file_names = parse_file_structure(file)
+
+    return file_names if file_names else None

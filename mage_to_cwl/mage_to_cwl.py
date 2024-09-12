@@ -4,22 +4,23 @@ from mage_to_cwl.mage_to_python import MageToPython
 
 
 class MageToCWL:
-    def __init__(self, blocks: List[Dict[str, Any]], pipeline_name: str) -> None:
+    def __init__(self, blocks: List[Dict[str, Any]], pipeline_name: str, repo_name: str) -> None:
         if len(blocks[0]["upstream_blocks"]) > 0:
             raise ValueError("First block must not have an upstream_block!")
         self.blocks = blocks
         self.results: List[MageToPython] = []
         self.files = {f"{pipeline_name}/scripts/requirements/": None}
         self.pipeline_name = pipeline_name
+        self.repo_name = repo_name
 
     def _transform_mage_to_python(self) -> None:
         for i, block in enumerate(self.blocks):
             if i == 0:
-                entry = MageToPython(block["content"], block["uuid"])
+                entry = MageToPython(block["content"], block["uuid"], self.repo_name)
                 entry.mage_to_python()
                 self.results.append(entry)
             else:
-                entry = MageToPython(block["content"], block["uuid"], self.results[i-1].block_name)
+                entry = MageToPython(block["content"], block["uuid"], self.repo_name, self.results[i-1].block_name)
                 entry.mage_to_python()
                 self.results.append(entry)
 
