@@ -68,7 +68,7 @@ class MageToCWL:
         arguments:
           - valueFrom: |
               set -e && \
-              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$PYTHONPATH && \
+              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
               python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script)
         
           - position: 0
@@ -110,7 +110,7 @@ class MageToCWL:
         arguments:
           - valueFrom: |
               set -e && \
-              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$PYTHONPATH && \
+              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
               python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script) $(inputs.prev_block_name_result.path)
         
           - position: 0
@@ -152,7 +152,7 @@ class MageToCWL:
             arguments:
               - valueFrom: |
                   set -e && \
-                  export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$PYTHONPATH && \
+                  export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
                   python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script) $(inputs.prev_block_name_result.path)
 
               - position: 0
