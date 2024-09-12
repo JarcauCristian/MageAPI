@@ -133,7 +133,7 @@ if args.filename:
 
 def remove_imports_with_word(code_string: str, word: str, block_name: str, previous_block_name: str) -> (str, list[str], str):
     tree = ast.parse(code_string)
-    transformer = MageToPythonTransformer(word, ["data_loader", "transformer", "data_exporter", "sensor"],
+    transformer = MageToPythonTransformer(word, ["data_loader", "transformer", "data_exporter", "sensor", "custom"],
                                           block_name=block_name, previous_block_name=previous_block_name)
     cleaned_tree = transformer.visit(tree)
     cleaned_tree = ast.fix_missing_locations(cleaned_tree)
@@ -173,7 +173,7 @@ def remove_imports_with_word(code_string: str, word: str, block_name: str, previ
     return cleaned_code, transformer.env_vars
 
 
-def replace_code_patterns(code_str):
+def replace_code_patterns(code_str, repo_name: str):
     env_vars = []
     kwargs_pattern = r'kwargs\.get\(([^)]+)\)'
 
@@ -196,5 +196,9 @@ def replace_code_patterns(code_str):
         return 'password = os.getenv("PASSWORD")'
 
     modified_code_str = re.sub(password_pattern, password_replacement, modified_code_str)
+
+    repo_pattern = rf'\b{repo_name}\.\w+'
+
+    modified_code_str = re.sub(repo_pattern, "", modified_code_str)
 
     return modified_code_str, env_vars

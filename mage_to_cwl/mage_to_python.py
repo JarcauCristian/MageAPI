@@ -7,7 +7,7 @@ import os
 
 
 class MageToPython:
-    def __init__(self, code_string: str, block_name: str, previous_block_name: str = None) -> None:
+    def __init__(self, code_string: str, block_name: str, repo_name: str, previous_block_name: str = None) -> None:
         """
         Initializer function for MageToPython class.
         :param code_string: The string that contains the Mage AI formatted Python code .
@@ -16,6 +16,7 @@ class MageToPython:
         self.env_vars = None
         self.block_name = block_name
         self.previous_block_name = previous_block_name
+        self.repo_name = repo_name
 
     def _format_code_autopep8(self) -> None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".py") as tmp_file:
@@ -32,7 +33,8 @@ class MageToPython:
                     formatted_code = file.read()
 
                 self.code_string = formatted_code
-
+            except Exception as _:
+                return
             finally:
                 os.remove(tmp_file_path)
 
@@ -51,12 +53,13 @@ class MageToPython:
                     formatted_code = file.read()
 
                 self.code_string = formatted_code
-
+            except Exception as _:
+                return
             finally:
                 os.remove(tmp_file_path)
 
     def _remove_mage_imports(self) -> None:
-        self.code_string, self.env_vars = replace_code_patterns(self.code_string)
+        self.code_string, self.env_vars = replace_code_patterns(self.code_string, repo_name=self.repo_name)
         self.code_string, env_vars = remove_imports_with_word(self.code_string, "mage_ai", self.block_name, self.previous_block_name)
         self.env_vars = self.env_vars + env_vars
 
