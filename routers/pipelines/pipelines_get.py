@@ -438,7 +438,6 @@ async def export_pipeline(pipeline_name: str):
         raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
     repository_name = get_repo_name(local_token=token.token)
-    files = get_utils_folder(local_token=token.token)
 
     blocks = response.json()["pipeline"]["blocks"]
     blocks.sort(key=lambda x: (len(x['upstream_blocks']) == 0, len(x['downstream_blocks']) != 0))
@@ -458,6 +457,13 @@ async def export_pipeline(pipeline_name: str):
 
     sorted_data.reverse()
 
+    download_utils = False
+
+    for block in sorted_data:
+        if f"from {repository_name}" in block["content"] or f"import {repository_name}" in block["content"]:
+            download_utils = True
+            break
+
     mtc = MageToCWL(sorted_data, pipeline_name, repository_name)
     mtc.process()
     zip_buffer = io.BytesIO()
@@ -469,17 +475,19 @@ async def export_pipeline(pipeline_name: str):
             else:
                 zipf.writestr(file_path, content)
 
-        if files is not None:
-            for file_info in files:
-                try:
-                    file_content = download_file(file_info["encoded_path"], token.token)
+        if download_utils:
+            files = get_utils_folder(local_token=token.token)
+            if files is not None:
+                for file_info in files:
+                    try:
+                        file_content = download_file(file_info["encoded_path"], token.token)
 
-                    zipf.writestr(pipeline_name + "/" + file_info["full_path"], file_content)
+                        zipf.writestr(pipeline_name + "/" + file_info["full_path"], file_content)
 
-                except Exception as e:
-                    print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")
-                    raise HTTPException(status_code=500,
-                                        detail=f"Failed to download or add {file_info['full_path']} to zip!")
+                    except Exception as e:
+                        print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")
+                        raise HTTPException(status_code=500,
+                                            detail=f"Failed to download or add {file_info['full_path']} to zip!")
 
     zip_buffer.seek(0)
 

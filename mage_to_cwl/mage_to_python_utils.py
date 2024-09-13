@@ -197,7 +197,7 @@ def replace_code_patterns(code_str, repo_name: str):
 
     modified_code_str = re.sub(password_pattern, password_replacement, modified_code_str)
 
-    repo_pattern = rf'\b{repo_name}\.\w+'
+    repo_pattern = rf'\b{repo_name}\.+'
 
     modified_code_str = re.sub(repo_pattern, "", modified_code_str)
 
