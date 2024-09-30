@@ -482,7 +482,7 @@ async def export_pipeline(pipeline_name: str):
                     try:
                         file_content = download_file(file_info["encoded_path"], token.token)
 
-                        zipf.writestr(pipeline_name + "/" + file_info["full_path"], file_content)
+                        zipf.writestr(pipeline_name + "/scripts/" + file_info["full_path"], file_content)
 
                     except Exception as e:
                         print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")

@@ -68,7 +68,7 @@ class MageToCWL:
         arguments:
           - valueFrom: |
               set -e && \
-              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
+              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
               python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script)
         
           - position: 0
@@ -110,7 +110,7 @@ class MageToCWL:
         arguments:
           - valueFrom: |
               set -e && \
-              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
+              export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
               python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script) $(inputs.prev_block_name_result.path)
         
           - position: 0
@@ -152,7 +152,7 @@ class MageToCWL:
             arguments:
               - valueFrom: |
                   set -e && \
-                  export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:../$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
+                  export PYTHONPATH=$(inputs.scripts_directory.path)/requirements:$(inputs.scripts_directory.path)/utils:$PYTHONPATH && \
                   python3 $(inputs.scripts_directory.path)/$(inputs.block_name_script) $(inputs.prev_block_name_result.path)
 
               - position: 0
@@ -200,6 +200,7 @@ class MageToCWL:
               export PATH=$HOME/.local/bin:$PATH && \
               pip install --user pipreqs && \
               pipreqs $(inputs.scripts_folder.path) --force --ignore $(inputs.scripts_folder.path)/requirements --savepath $(inputs.scripts_folder.path)/requirements/requirements.txt && \
+              grep -v '^utils\(==.*\)\?$' $(inputs.scripts_folder.path)/requirements/requirements.txt | sed 's/==.*//' > $(inputs.scripts_folder.path)/requirements/requirements.txt && \
               pip install --target $(inputs.scripts_folder.path)/requirements -r $(inputs.scripts_folder.path)/requirements/requirements.txt
         
           - position: 0
@@ -268,6 +269,15 @@ if __name__ == "__main__":
     def _run_script() -> str:
         string = """#! /bin/bash
 cwltool --validate workflow.cwl inputs.yml
+test_env=$(cat workflow.cwl | grep PLACEHOLDER | wc -l)
+
+if [[ $test_env -ne 0 ]]; then
+    echo "Please enter all the environment variables from workflow.cwl file in place of PLACEHOLDER!"
+    exit
+fi
+
+pip install --target ./scripts/requirements torch --index-url https://download.pytorch.org/whl/cpu
+
 cwltool workflow.cwl inputs.yml && pip install matplotlib && python3 result_displayer.py -f final_output
 """
         return string
