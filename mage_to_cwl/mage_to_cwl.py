@@ -235,7 +235,7 @@ if [ -z "$(ls -A "$DIR")" ]; then
     pip install --target ./scripts/requirements -r ./scripts/requirements/requirements_parsed.txt
 fi
 
-cwltool workflow.cwl inputs.yml && pip install --target ./scripts/requirements matplotlib && python3 result_displayer.py -f final_output
+cwltool workflow.cwl inputs.yml && pip install --target ./scripts/requirements matplotlib && export PYTHONPATH=./scripts/requirements:./scripts:$PYTHONPATH && python3 result_displayer.py -f final_output
 """
         return string
 
