@@ -54,10 +54,6 @@ class MageToCWL:
             type: Directory
             inputBinding:
               position: 2
-          dependency:
-            type: File
-            inputBinding:
-              position: 3
 
         outputs:
           block_name_result:
@@ -171,45 +167,6 @@ class MageToCWL:
         return yaml.safe_load(string)
 
     @staticmethod
-    def _install_script() -> Any:
-        string = """
-        cwlVersion: v1.2
-        class: CommandLineTool
-        id: install_requirements
-        baseCommand: [bash, -c]
-        stdout: output
-        
-        requirements:
-          InlineJavascriptRequirement: {}
-        
-        inputs:
-          scripts_folder:
-            type: Directory
-            inputBinding:
-              position: 1
-        
-        outputs:
-          output:
-            type: File
-            outputBinding:
-              glob: output
-        
-        arguments:
-          - valueFrom: |
-              set -e
-              export PATH=$HOME/.local/bin:$PATH && \
-              pip install --user pipreqs && \
-              pipreqs $(inputs.scripts_folder.path) --force --ignore $(inputs.scripts_folder.path)/requirements --savepath $(inputs.scripts_folder.path)/requirements/requirements.txt && \
-              grep -v '^utils\(==.*\)\?$' $(inputs.scripts_folder.path)/requirements/requirements.txt | sed 's/==.*//' > $(inputs.scripts_folder.path)/requirements/requirements.txt && \
-              pip install --target $(inputs.scripts_folder.path)/requirements -r $(inputs.scripts_folder.path)/requirements/requirements.txt
-        
-          - position: 0
-            prefix: --
-            valueFrom: ""
-        """
-        return yaml.safe_load(string)
-
-    @staticmethod
     def _workflow() -> Any:
         string = """
         cwlVersion: v1.2
@@ -224,17 +181,9 @@ class MageToCWL:
           scripts_folder:
             type: Directory
         
-        outputs:
-          install_requirements_result:
-            type: File
-            outputSource: install_requirements/output
+        outputs: {}
         
-        steps:
-          install_requirements:
-            run: ./steps/install_requirements.cwl
-            in:
-              scripts_folder: scripts_folder
-            out: [output]
+        steps: {}
         """
         return yaml.safe_load(string)
 
@@ -276,9 +225,17 @@ if [[ $test_env -ne 0 ]]; then
     exit
 fi
 
-pip install --target ./scripts/requirements torch --index-url https://download.pytorch.org/whl/cpu
+DIR="./scripts/requirements"
 
-cwltool workflow.cwl inputs.yml && pip install matplotlib && python3 result_displayer.py -f final_output
+if [ -z "$(ls -A "$DIR")" ]; then
+    pip install --target ./scripts/requirements torch --index-url https://download.pytorch.org/whl/cpu
+    pip install --user pipreqs
+    pipreqs ./scripts --force --ignore scripts/requirements --savepath scripts/requirements/requirements.txt
+    grep -v '^utils\\(==.*\\)\\?$' ./scripts/requirements/requirements.txt | sed 's/==.*//' > ./scripts/requirements/requirements_parsed.txt
+    pip install --target ./scripts/requirements -r ./scripts/requirements/requirements_parsed.txt
+fi
+
+cwltool workflow.cwl inputs.yml && pip install --target ./scripts/requirements matplotlib && python3 result_displayer.py -f final_output
 """
         return string
 
@@ -290,7 +247,6 @@ cwltool workflow.cwl inputs.yml && pip install matplotlib && python3 result_disp
         workflow = self._workflow()
         self.files[f"{self.pipeline_name}/result_displayer.py"] = self._result_displayer()
         self.files[f"{self.pipeline_name}/run.sh"] = self._run_script()
-        self.files[f"{self.pipeline_name}/steps/install_requirements.cwl"] = yaml.safe_dump(self._install_script(), default_flow_style=False, sort_keys=False)
         for i, result in enumerate(self.results):
             self.files[f"{self.pipeline_name}/scripts/{result.block_name}.py"] = result.code_string
             inputs[f"{result.block_name}_script"] = self.QuotedString(f"{result.block_name}.py")
@@ -305,7 +261,6 @@ cwltool workflow.cwl inputs.yml && pip install matplotlib && python3 result_disp
                     "in": {
                         f"{result.block_name}_script": f"{result.block_name}_script",
                         "scripts_directory": "scripts_folder",
-                        "dependency": "install_requirements/output"
                     },
                     "out": [f"{result.block_name}_result"]
                 }
