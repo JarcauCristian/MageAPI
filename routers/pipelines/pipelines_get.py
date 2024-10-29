@@ -1,6 +1,7 @@
 import io
 import os
 import re
+import yaml
 import json
 import zipfile
 import requests
@@ -420,8 +421,8 @@ async def description(pipeline_type: str):
     return JSONResponse(content=templates, status_code=200)
 
 
-@router.get("/mage/pipeline/export", tags=["PIPELINES GET"])
-async def export_pipeline(pipeline_name: str):
+@router.get("/mage/pipeline/export/cwl", tags=["PIPELINES GET"])
+async def export_pipeline_cwl(pipeline_name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -476,7 +477,7 @@ async def export_pipeline(pipeline_name: str):
                 zipf.writestr(file_path, content)
 
         if download_utils:
-            files = get_utils_folder(local_token=token.token)
+            files = get_folder("utils", local_token=token.token)
             if files is not None:
                 for file_info in files:
                     try:
@@ -488,6 +489,50 @@ async def export_pipeline(pipeline_name: str):
                         print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")
                         raise HTTPException(status_code=500,
                                             detail=f"Failed to download or add {file_info['full_path']} to zip!")
+
+    zip_buffer.seek(0)
+
+    response = StreamingResponse(zip_buffer, media_type="application/x-zip-compressed")
+    response.headers["Content-Disposition"] = f"attachment; filename={pipeline_name}.zip"
+
+    return response
+
+
+@router.get("/mage/pipeline/export")
+async def export_pipeline(pipeline_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    pipeline_folder = get_folder(f"pipelines/{pipeline_name}", local_token=token.token)
+
+    if pipeline_folder is None:
+        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found!")
+
+    file_contents = []
+    readme = f"# {' '.join(pipeline_name.split('_')).title()} configuration \n- Add the folder called **{pipeline_name}** inside the **pipelines** folder in MageAI."
+    metadata = None
+    for entry in pipeline_folder:
+        file_content = download_file(urllib.parse.quote(f'pipelines/{entry["encoded_path"]}'), token.token)
+        if "metadata.yaml" in entry["encoded_path"]:
+            metadata = yaml.safe_load(file_content)
+
+        file_contents.append({"path": entry["full_path"], "content": file_content})
+
+    if metadata:
+        for block in metadata["blocks"]:
+            block_type = block["type"]
+            block_name = block["name"]
+            block_content = download_file(urllib.parse.quote(f'{block_type}s/{block_name}.py'), token.token)
+            file_contents.append({"path": f'{block_name}.py', "content": block_content})
+            readme += f"\n- Add file **{block_name}.py** to **{block_type}s** folder in MageAI."
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file_info in file_contents:
+            zipf.writestr(file_info["path"], file_info["content"])
+        zipf.writestr("README.md", readme)
 
     zip_buffer.seek(0)
 
@@ -550,7 +595,7 @@ def parse_file_structure(node, current_path=""):
     return files
 
 
-def get_utils_folder(local_token: str):
+def get_folder(folder_name: str, local_token: str):
     url = f'{os.getenv("BASE_URL")}/api/files?include_pipeline_count=true&api_key={os.getenv("API_KEY")}'
 
     headers = {
@@ -562,12 +607,21 @@ def get_utils_folder(local_token: str):
     if response.status_code not in [200, 304] or response.json().get("error"):
         return None
 
-    file_names = None
+    i = 0
+    file_names = None  # Will contain the encoded_path and full_path for the files in that specified folder
+    folder_names = folder_name.split("/")  # Split the folder_name at "/" if there is a multilayer path
+    files_data = response.json().get("files", [])  # All the files in the root structure folder
+    current_path = files_data[0].get("children", [])  # The current children of the root structure folder
 
-    files_data = response.json().get("files", [])
-    if files_data:
-        for file in files_data[0].get("children", []):
-            if file["name"] == "utils":
-                file_names = parse_file_structure(file)
+    if current_path:
+        while i < len(folder_names) and current_path:
+            for file in current_path:
+                if file["name"] == folder_names[i]:
+                    if i == len(folder_names) - 1:
+                        file_names = parse_file_structure(file)
+                        break
+                    current_path = file.get("children", [])
+                    break
+            i += 1
 
     return file_names if file_names else None
