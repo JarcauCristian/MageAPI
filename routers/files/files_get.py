@@ -42,6 +42,31 @@ async def download(file_name: str):
     return response
 
 
+@router.get("/mage/file/download/plain", tags=["FILES GET"])
+async def download(file_name: str):
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token.token}',
+        'X-API-KEY': os.getenv("API_KEY")
+    }
+
+    url = f'{os.getenv("BASE_URL")}/api/file_contents/files%2F{file_name}?api_key={os.getenv("API_KEY")}'
+
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code not in [200, 304]:
+        raise HTTPException(status_code=500, detail="Could not retrieve the file contents!")
+
+    file_object = response.json()["file_content"]["content"]
+
+    return file_object
+
+
 @router.get("/mage/file/figures", tags=["FILES GET"])
 async def figures(pipeline_name: str):
     if token.check_token_expired():
