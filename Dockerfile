@@ -16,11 +16,11 @@ RUN pip install torch torchvision torchaudio --index-url https://download.pytorc
 
 RUN pip install -r requirements.txt
 
-ENV API_KEY = key
 ENV EMAIL = admin@admin.com
 ENV PASSWORD = password
 ENV BASE_URL = https://mage.sedimark.work
-ENV LOCAL_IP = 127.0.0.1
+ENV AUTH = false
+ENV OLLAMA_URL = http://localhost:11434
 
 EXPOSE 8000 
 

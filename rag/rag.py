@@ -1,10 +1,8 @@
 from ollama import Client
 from rag.embed import Embed
-from typing import Dict, Any
 from chromadb import PersistentClient
 from langchain_community.llms.ollama import Ollama
 from langchain_community.vectorstores import Chroma
-from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser

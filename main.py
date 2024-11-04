@@ -28,7 +28,7 @@ async def lifespan(_):
     ollama_client = Client(os.getenv("OLLAMA_URL"))
     db_path_exists = os.path.exists("db")
     chroma_client = chromadb.PersistentClient("./db")
-    ing = Ingester(ollama_client, chroma_client, os.getenv("OLLAMA_EMBED_MODEL"), os.getenv("TOKENIZER"), int(os.getenv("MAX_TOKENS")))
+    ing = Ingester(ollama_client, chroma_client, "nomic-embed-text:latest", "nomic-ai/nomic-embed-text-v1", 1500)
     common_aliases = {
         "pd": "pandas",
         "np": "numpy",
@@ -51,8 +51,8 @@ async def lifespan(_):
                 elif p.name == "configs":
                     utils.add_configs(p.__str__(), ing)
 
-    rag = RAGPipeline(os.getenv("OLLAMA_URL"), os.getenv("OLLAMA_MODEL"), ollama_client,
-                      os.getenv("OLLAMA_EMBED_MODEL"), chroma_client, os.getenv("CHROMA_COLLECTION"))
+    rag = RAGPipeline(os.getenv("OLLAMA_URL"), "llama3.1:latest", ollama_client,
+                      "nomic-embed-text:latest", chroma_client, "etl_pipelines_collection")
 
     yield
     del rag, ing, lint
@@ -147,8 +147,6 @@ async def socket(websocket: WebSocket):
                     linted_code = lint.process(result_block)
                     await websocket.send_text(linted_code)
     except WebSocketDisconnect:
-        if validated_data is not None:
-            rag.clear_session(validated_data.block_type)
         await websocket.send_json({"detail": "Websocket disconnect successfully!"})
     except ValidationError:
         await websocket.send_json({"detail": "JSON validation error!"})
@@ -168,4 +166,23 @@ async def get_model_response(query: Query) -> str:
     return code
 
 if __name__ == '__main__':
+    if os.getenv('AUTH') is None:
+        print("AUTH env variable is required can be [true, false]")
+        exit(1)
+    else:
+        if os.getenv('AUTH') == 'true':
+            if os.getenv('EMAIL') is None or os.getenv('PASSWORD') is None:
+                print("EMAIL or PASSWORD env variable not provided. If AUTH is true they are required!")
+                exit(1)
+
+    if os.getenv('BASE_URL') is None:
+        print("BASE_URL env variable is required!")
+        exit(1)
+
+    if os.getenv('OLLAMA_URL') is None:
+        print("OLLAMA_URL env variable is required!")
+        exit(1)
+
+    os.environ["API_KEY"] = "zkWlN0PkIKSN0C11CfUHUj84OT5XOJ6tDZ6bDRO2"
+
     uvicorn.run(app, host="0.0.0.0")

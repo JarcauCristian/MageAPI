@@ -7,6 +7,10 @@ from datetime import datetime
 
 class Token:
     def __init__(self) -> None:
+        if os.getenv("AUTH") == "false":
+            self.token = "token"
+            self.expires = 0.0
+            return
 
         url = os.getenv("BASE_URL") + "/api/sessions"
         headers = {
@@ -59,6 +63,9 @@ class Token:
         self.expires = expires
 
     def check_token_expired(self) -> bool:
+        if os.getenv("AUTH") == "false":
+            return False
+
         provided_time = datetime.fromtimestamp(self.expires)
 
         current_time = datetime.now()
