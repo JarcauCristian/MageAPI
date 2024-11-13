@@ -310,7 +310,7 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
         "Content-Type": "application/json"
     }
 
-    url = f'{os.getenv("BASE_URL")}/api/pipeline_runs?_limit={limit}&_offset=0&pipeline_uuid={}&disable_retries_grouping=true&api_key={os.getenv("API_KEY")}'
+    url = f'{os.getenv("BASE_URL")}/api/pipeline_runs?_limit={limit}&_offset=0&pipeline_uuid={pipeline_name}&disable_retries_grouping=true&api_key={os.getenv("API_KEY")}'
 
     response = requests.request("GET", url, headers=headers)
 
