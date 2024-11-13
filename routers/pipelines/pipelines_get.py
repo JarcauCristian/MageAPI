@@ -305,27 +305,12 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    url = f'{os.getenv("BASE_URL")}/api/pipeline_schedules?api_key={os.getenv("API_KEY")}'
-
     headers = {
         "Authorization": f"Bearer {token.token}",
         "Content-Type": "application/json"
     }
 
-    response = requests.request("GET", url, headers=headers)
-
-    if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(detail=response.json().get("error")["exception"], status_code=500)
-
-    run_id = None
-    for schedule in response.json()["pipeline_schedules"]:
-        if schedule["pipeline_uuid"] == pipeline_name:
-            run_id = schedule["id"]
-
-    if run_id is None:
-        raise HTTPException(status_code=404, detail="Pipeline does not have any active runs!")
-
-    url = f'{os.getenv("BASE_URL")}/api/pipeline_schedules/{run_id}/pipeline_runs?_limit={limit}&_offset=0&api_key={os.getenv("API_KEY")}'
+    url = f'{os.getenv("BASE_URL")}/api/pipeline_runs?_limit={limit}&_offset=0&pipeline_uuid={}&disable_retries_grouping=true&api_key={os.getenv("API_KEY")}'
 
     response = requests.request("GET", url, headers=headers)
 
