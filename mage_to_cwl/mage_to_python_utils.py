@@ -74,8 +74,10 @@ class RemoveUnusedCode(ast.NodeTransformer):
 
         # First pass: collect all defined names
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.Name)):
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
                 self.defined_names.add(node.name)
+            elif isinstance(node, ast.Name):
+                self.defined_names.add(node.id)
 
         # Second pass: transform the AST
         tree = self.visit(tree)
