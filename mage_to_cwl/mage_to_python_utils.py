@@ -16,10 +16,31 @@ def is_picklable(obj):
 class RemoveUnusedCode(ast.NodeTransformer):
     def __init__(self):
         self.used_names = set()
+        self.scope_stack = []
 
     def visit_Name(self, node):
-        self.used_names.add(node.id)
+        if self.scope_stack:
+            self.scope_stack[-1].add(node.id)
         return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.scope_stack.append(set())
+        self.generic_visit(node)
+        used_names = self.scope_stack.pop()
+
+        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.Assign) or 
+                     any(target.id in used_names for target in stmt.targets if isinstance(target, ast.Name))]
+
+        return node if node.name in self.used_names or self.scope_stack else None
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self.scope_stack.append(set())
+        self.generic_visit(node)
+        used_names = self.scope_stack.pop()
+
+        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.FunctionDef) or stmt.name in used_names]
+
+        return node if node.name in self.used_names or self.scope_stack else None
 
     def visit_Import(self, node: ast.Import):
         node.names = [alias for alias in node.names if alias.name in self.used_names]
@@ -31,14 +52,8 @@ class RemoveUnusedCode(ast.NodeTransformer):
 
     def visit_Assign(self, node: ast.Assign):
         if isinstance(node.targets[0], ast.Name):
-            if node.targets[0].id not in self.used_names:
+            if self.scope_stack and node.targets[0].id not in self.scope_stack[-1]:
                 return None
-        return node
-
-    def visit_FunctionDef(self, node: ast.FunctionDef):
-        if node.name not in self.used_names:
-            return None
-        self.generic_visit(node)
         return node
 
     def remove_unused_code(self, code_string: str) -> str:
