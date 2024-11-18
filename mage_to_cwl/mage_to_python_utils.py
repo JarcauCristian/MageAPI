@@ -21,69 +21,68 @@ class RemoveUnusedCode(ast.NodeTransformer):
     def visit_Name(self, node):
         if isinstance(node.ctx, ast.Load) and self.scope_stack:
             self.scope_stack[-1].add(node.id)
+        elif isinstance(node.ctx, ast.Store):
+            self.defined_names.add(node.id)
         return node
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
+    def visit_FunctionDef(self, node):
         self.defined_names.add(node.name)
 
+        # Track usage within the function
         self.scope_stack.append(set())
         self.generic_visit(node)
         used_names = self.scope_stack.pop()
 
+        # Remove unused assignments within the function
         node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.Assign) or 
-                     any(target.id in used_names for target in stmt.targets if isinstance(target, ast.Name))]
+                     any(isinstance(target, ast.Name) and target.id in used_names 
+                         for target in stmt.targets)]
 
-        return node if node.name in self.used_names or self.scope_stack else None
+        # Keep the function if it is used or part of the top-level scope
+        return node if node.name in self.used_names or not self.scope_stack else None
 
-    def visit_ClassDef(self, node: ast.ClassDef):
+    def visit_ClassDef(self, node):
         self.defined_names.add(node.name)
 
+        # Track usage within the class
         self.scope_stack.append(set())
         self.generic_visit(node)
         used_names = self.scope_stack.pop()
 
-        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.FunctionDef) or stmt.name in used_names]
+        # Remove unused methods within the class
+        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.FunctionDef) or 
+                     stmt.name in used_names]
 
-        return node if node.name in self.used_names or self.scope_stack else None
+        # Keep the class if it is used or part of the top-level scope
+        return node if node.name in self.used_names or not self.scope_stack else None
 
-    def visit_Call(self, node: ast.Call):
-        if isinstance(node.func, ast.Name) and node.func.id not in self.defined_names:
-            return None
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name):
+            self.used_names.add(node.func.id)
         self.generic_visit(node)
         return node
 
-    def visit_With(self, node: ast.With):
-        for item in node.items:
-            if hasattr(item, 'context'):
-                self.visit(item.context)
-        self.generic_visit(node)
-        return node
+    def visit_Assign(self, node):
+        # Keep the assignment if its target is used
+        if any(isinstance(target, ast.Name) and self.scope_stack and target.id in self.scope_stack[-1]
+               for target in node.targets):
+            return node
+        return None
 
-    def visit_Import(self, node: ast.Import):
-        return node
-
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        return node
-
-    def visit_Assign(self, node: ast.Assign):
-        if isinstance(node.targets[0], ast.Name):
-            if self.scope_stack and node.targets[0].id not in self.scope_stack[-1]:
-                return None
-        return node
-
-    def remove_unused_code(self, code_string: str) -> str:
+    def remove_unused_code(self, code_string):
         tree = ast.parse(code_string)
 
+        # First pass: collect all defined names
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.Name)):
                 self.defined_names.add(node.name)
-            self.visit(node)
 
+        # Second pass: transform the AST
         tree = self.visit(tree)
         tree = ast.fix_missing_locations(tree)
 
-        cleaned_code = ast.unparse(tree)
-        return cleaned_code
+        # Return the cleaned-up code as a string
+        return ast.unparse(tree)
     
 
 class MageToPythonTransformer(ast.NodeTransformer):
@@ -131,13 +130,6 @@ class MageToPythonTransformer(ast.NodeTransformer):
         node.body = [stmt for stmt in node.body if not isinstance(stmt, (ast.Import, ast.ImportFrom)) or stmt.names]
         if not node.body:
             return None
-        return node
-
-    def visit_With(self, node: ast.With):
-        for item in node.items:
-            if hasattr(item, 'context'):
-                self.visit(item.context)
-        self.generic_visit(node)
         return node
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Optional[ast.FunctionDef]:
