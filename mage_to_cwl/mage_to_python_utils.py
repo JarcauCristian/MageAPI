@@ -62,18 +62,18 @@ class RemoveUnusedCode(ast.NodeTransformer):
         node.body = [self.visit(stmt) for stmt in node.body if stmt is not None]
         return node
 
-    def remove_unused_code(self, code):
-        try:
-            tree = ast.parse(code)
+def remove_unused_code(code):
+     try:
+        tree = ast.parse(code)
 
-            transformer = UnusedCodeRemover()
-            sanitized_tree = transformer.visit(tree)
+        transformer = RemoveUnusedCode()
+        sanitized_tree = transformer.visit(tree)
 
-            sanitized_code = ast.unparse(sanitized_tree)
-            return sanitized_code
-        except Exception as e:
-            print(f"Error while removing unused code: {e}")
-            return code
+        sanitized_code = ast.unparse(sanitized_tree)
+        return sanitized_code
+    except Exception as e:
+        print(f"Error while removing unused code: {e}")
+        return code
     
 
 class MageToPythonTransformer(ast.NodeTransformer):
@@ -234,8 +234,7 @@ def remove_imports_with_word(code_string: str, word: str, block_name: str, previ
         cleaned_tree.body.insert(1, pandas_import)
 
     cleaned_code = ast.unparse(cleaned_tree)
-    cleaner = RemoveUnusedCode()
-    cleaned_code = cleaner.remove_unused_code(cleaned_code)
+    cleaned_code = remove_unused_code(cleaned_code)
     return cleaned_code, transformer.env_vars
 
 
