@@ -12,6 +12,47 @@ def is_picklable(obj):
         return False
 
 
+class RemoveUnusedCode(ast.NodeTransformer):
+    def __init__(self):
+        self.used_names = set()
+
+    def visit_Name(self, node):
+        self.used_names.add(node.id)
+        return node
+
+    def visit_Import(self, node: ast.Import):
+        node.names = [alias for alias in node.names if alias.name in self.used_names]
+        return node if node.names else None
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        node.names = [alias for alias in node.names if alias.name in self.used_names]
+        return node if node.names else None
+
+    def visit_Assign(self, node: ast.Assign):
+        if isinstance(node.targets[0], ast.Name):
+            if node.targets[0].id not in self.used_names:
+                return None
+        return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        if node.name not in self.used_names:
+            return None
+        self.generic_visit(node)
+        return node
+
+    def remove_unused_code(self, code_string: str) -> str:
+        tree = ast.parse(code_string)
+
+        for node in ast.walk(tree):
+            self.visit(node)
+
+        tree = self.visit(tree)
+        tree = ast.fix_missing_locations(tree)
+
+        cleaned_code = astor.to_source(tree)
+        return cleaned_code
+
+
 class MageToPythonTransformer(ast.NodeTransformer):
     def __init__(self, word: str, decorators: List[str], block_name: str, previous_block_name: str) -> None:
         self.word = word
@@ -170,6 +211,8 @@ def remove_imports_with_word(code_string: str, word: str, block_name: str, previ
         cleaned_tree.body.insert(1, pandas_import)
 
     cleaned_code = ast.unparse(cleaned_tree)
+    cleaner = RemoveUnusedCode()
+    cleaned_code = cleaner.remove_unused_code(cleaned_code)
     return cleaned_code, transformer.env_vars
 
 
