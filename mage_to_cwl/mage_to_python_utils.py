@@ -14,77 +14,53 @@ def is_picklable(obj):
 
 class RemoveUnusedCode(ast.NodeTransformer):
     def __init__(self):
-        self.used_names = set()
-        self.defined_names = set()
-        self.scope_stack = []
-
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load) and self.scope_stack:
-            self.scope_stack[-1].add(node.id)
-        elif isinstance(node.ctx, ast.Store):
-            self.defined_names.add(node.id)
-        return node
+        super().__init__()
 
     def visit_FunctionDef(self, node):
-        self.defined_names.add(node.name)
-
-        # Track usage within the function
-        self.scope_stack.append(set())
-        self.generic_visit(node)
-        used_names = self.scope_stack.pop()
-
-        # Remove unused assignments within the function
-        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.Assign) or 
-                     any(isinstance(target, ast.Name) and target.id in used_names 
-                         for target in stmt.targets)]
-
-        # Keep the function if it is used or part of the top-level scope
-        return node if node.name in self.used_names or not self.scope_stack else None
-
-    def visit_ClassDef(self, node):
-        self.defined_names.add(node.name)
-
-        # Track usage within the class
-        self.scope_stack.append(set())
-        self.generic_visit(node)
-        used_names = self.scope_stack.pop()
-
-        # Remove unused methods within the class
-        node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.FunctionDef) or 
-                     stmt.name in used_names]
-
-        # Keep the class if it is used or part of the top-level scope
-        return node if node.name in self.used_names or not self.scope_stack else None
-
-    def visit_Call(self, node):
-        if isinstance(node.func, ast.Name):
-            self.used_names.add(node.func.id)
+        if not any(isinstance(stmt, ast.Call) and stmt.func.id == node.name for stmt in ast.walk(node)):
+            print(f"Removing unused function {node.name}")
+            return None
+        
         self.generic_visit(node)
         return node
 
-    def visit_Assign(self, node):
-        # Keep the assignment if its target is used
-        if any(isinstance(target, ast.Name) and self.scope_stack and target.id in self.scope_stack[-1]
-               for target in node.targets):
-            return node
-        return None
+    def visit_ClassDef(self, node):
+        if not any(isinstance(stmt, ast.Name) and stmt.id == node.name for stmt in ast.walk(node)):
+            print(f"Removing unused class {node.name}")
+            return None  
+        
+        self.generic_visit(node)
+        return node
 
-    def remove_unused_code(self, code_string):
-        tree = ast.parse(code_string)
+    def visit_Expr(self, node):
+        if isinstance(node.value, ast.Call):
+            func_name = node.value.func.id if isinstance(node.value.func, ast.Name) else None
+            if func_name and not any(
+                isinstance(stmt, ast.FunctionDef) and stmt.name == func_name for stmt in ast.walk(self.root)
+            ):
+                print(f"Removing call to undefined function {func_name}")
+                return None
 
-        # First pass: collect all defined names
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-                self.defined_names.add(node.name)
-            elif isinstance(node, ast.Name):
-                self.defined_names.add(node.id)
+        return self.generic_visit(node)
 
-        # Second pass: transform the AST
-        tree = self.visit(tree)
-        tree = ast.fix_missing_locations(tree)
+    def visit_Module(self, node):
+        self.root = node
+        node.body = [self.visit(stmt) for stmt in node.body if stmt is not None]
+        return node
 
-        # Return the cleaned-up code as a string
-        return ast.unparse(tree)
+    def remove_unused_code(code):
+        try:
+            # Parse the code into an AST
+            tree = ast.parse(code)
+
+            transformer = UnusedCodeRemover()
+            sanitized_tree = transformer.visit(tree)
+
+            sanitized_code = ast.unparse(sanitized_tree)
+            return sanitized_code
+        except Exception as e:
+            print(f"Error while removing unused code: {e}")
+            return code
     
 
 class MageToPythonTransformer(ast.NodeTransformer):
