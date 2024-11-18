@@ -16,14 +16,17 @@ def is_picklable(obj):
 class RemoveUnusedCode(ast.NodeTransformer):
     def __init__(self):
         self.used_names = set()
+        self.defined_names = set()
         self.scope_stack = []
 
     def visit_Name(self, node):
-        if self.scope_stack:
+        if isinstance(node.ctx, ast.Load) and self.scope_stack:
             self.scope_stack[-1].add(node.id)
         return node
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.defined_names.add(node.name)
+
         self.scope_stack.append(set())
         self.generic_visit(node)
         used_names = self.scope_stack.pop()
@@ -34,6 +37,8 @@ class RemoveUnusedCode(ast.NodeTransformer):
         return node if node.name in self.used_names or self.scope_stack else None
 
     def visit_ClassDef(self, node: ast.ClassDef):
+        self.defined_names.add(node.name)
+
         self.scope_stack.append(set())
         self.generic_visit(node)
         used_names = self.scope_stack.pop()
@@ -42,13 +47,17 @@ class RemoveUnusedCode(ast.NodeTransformer):
 
         return node if node.name in self.used_names or self.scope_stack else None
 
+    def visit_Call(self, node: ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id not in self.defined_names:
+            return None
+        self.generic_visit(node)
+        return node
+
     def visit_Import(self, node: ast.Import):
-        node.names = [alias for alias in node.names if alias.name in self.used_names]
-        return node if node.names else None
+        return node
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        node.names = [alias for alias in node.names if alias.name in self.used_names]
-        return node if node.names else None
+        return node
 
     def visit_Assign(self, node: ast.Assign):
         if isinstance(node.targets[0], ast.Name):
@@ -60,6 +69,8 @@ class RemoveUnusedCode(ast.NodeTransformer):
         tree = ast.parse(code_string)
 
         for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                self.defined_names.add(node.name)
             self.visit(node)
 
         tree = self.visit(tree)
