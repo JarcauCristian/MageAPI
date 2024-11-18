@@ -52,6 +52,12 @@ class RemoveUnusedCode(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
+    def visit_With(self, node: ast.With):
+        for item in node.items:
+            self.visit(item.context_expr)
+        self.generic_visit(node)
+        return node
+
     def visit_Import(self, node: ast.Import):
         return node
 
@@ -77,7 +83,7 @@ class RemoveUnusedCode(ast.NodeTransformer):
 
         cleaned_code = ast.unparse(tree)
         return cleaned_code
-
+    
 
 class MageToPythonTransformer(ast.NodeTransformer):
     def __init__(self, word: str, decorators: List[str], block_name: str, previous_block_name: str) -> None:
