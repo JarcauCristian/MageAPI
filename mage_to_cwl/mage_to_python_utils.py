@@ -17,42 +17,49 @@ class RemoveUnusedCode(ast.NodeTransformer):
         super().__init__()
 
     def visit_FunctionDef(self, node):
-        if not any(isinstance(stmt, ast.Call) and stmt.func.id == node.name for stmt in ast.walk(self.root)):
+        if not any(isinstance(stmt, ast.Call) and isinstance(stmt.func, ast.Name) and stmt.func.id == node.name for stmt in ast.walk(self.root)):
             print(f"Removing unused function {node.name}")
             return None  
-            
+
         self.generic_visit(node)
         return node
 
     def visit_ClassDef(self, node):
         if not any(isinstance(stmt, ast.Name) and stmt.id == node.name for stmt in ast.walk(self.root)):
             print(f"Removing unused class {node.name}")
-            return None  
-            
+            return None 
+
         self.generic_visit(node)
         return node
 
     def visit_Expr(self, node):
         if isinstance(node.value, ast.Call):
-            func_name = node.value.func.id if isinstance(node.value.func, ast.Name) else None
+            func_name = None
+            if isinstance(node.value.func, ast.Name):
+                func_name = node.value.func.id
+            elif isinstance(node.value.func, ast.Attribute):
+                func_name = node.value.func.attr
+
             if func_name and not any(
                 isinstance(stmt, (ast.FunctionDef, ast.ClassDef)) and stmt.name == func_name for stmt in ast.walk(self.root)
             ):
                 print(f"Removing call to undefined function or class method {func_name}")
-                return None 
+                return None  
 
         return self.generic_visit(node)
 
     def visit_Import(self, node):
-        if not any(isinstance(stmt, ast.Name) and stmt.id in {alias.name for alias in node.names} for stmt in ast.walk(self.root)):
-            print(f"Removing unused import {', '.join(alias.name for alias in node.names)}")
+        imported_names = {alias.name for alias in node.names}
+        if not any(isinstance(stmt, ast.Name) and stmt.id in imported_names for stmt in ast.walk(self.root)):
+            print(f"Removing unused import {', '.join(imported_names)}")
             return None
 
         return self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
-        if not any(isinstance(stmt, ast.Name) and stmt.id in {alias.name for alias in node.names} for stmt in ast.walk(self.root)):
-            print(f"Removing unused import from {node.module}: {', '.join(alias.name for alias in node.names)}")
+        imported_names = {alias.name for alias in node.names}
+        if not any(isinstance(stmt, ast.Name) and stmt.id in imported_names for stmt in ast.walk(self.root)):
+            print(f"Removing unused import from {node.module}: {', '.join(imported_names)}")
             return None
 
         return self.generic_visit(node)
