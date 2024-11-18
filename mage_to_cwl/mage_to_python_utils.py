@@ -1,6 +1,5 @@
 import re
 import ast
-import astor
 import pickle
 from typing import Optional, List
 
@@ -76,7 +75,7 @@ class RemoveUnusedCode(ast.NodeTransformer):
         tree = self.visit(tree)
         tree = ast.fix_missing_locations(tree)
 
-        cleaned_code = astor.to_source(tree)
+        cleaned_code = ast.unparse(tree)
         return cleaned_code
 
 
