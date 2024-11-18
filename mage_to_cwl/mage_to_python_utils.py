@@ -63,7 +63,7 @@ class RemoveUnusedCode(ast.NodeTransformer):
         return node
 
 def remove_unused_code(code):
-     try:
+    try:
         tree = ast.parse(code)
 
         transformer = RemoveUnusedCode()
