@@ -48,9 +48,8 @@ class RemoveUnusedCode(ast.NodeTransformer):
         node.body = [self.visit(stmt) for stmt in node.body if stmt is not None]
         return node
 
-    def remove_unused_code(code):
+    def remove_unused_code(self, code):
         try:
-            # Parse the code into an AST
             tree = ast.parse(code)
 
             transformer = UnusedCodeRemover()
