@@ -54,7 +54,8 @@ class RemoveUnusedCode(ast.NodeTransformer):
 
     def visit_With(self, node: ast.With):
         for item in node.items:
-            self.visit(item.context_expr)
+            if hasattr(item, 'context'):
+                self.visit(item.context)
         self.generic_visit(node)
         return node
 
