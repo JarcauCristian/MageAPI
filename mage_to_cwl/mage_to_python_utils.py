@@ -133,6 +133,13 @@ class MageToPythonTransformer(ast.NodeTransformer):
             return None
         return node
 
+    def visit_With(self, node: ast.With):
+        for item in node.items:
+            if hasattr(item, 'context'):
+                self.visit(item.context)
+        self.generic_visit(node)
+        return node
+
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Optional[ast.FunctionDef]:
         if any(decorator.id == 'test' for decorator in node.decorator_list if isinstance(decorator, ast.Name)):
             return None
