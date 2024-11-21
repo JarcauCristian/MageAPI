@@ -166,6 +166,13 @@ async def get_model_response(query: Query) -> str:
     return code
 
 if __name__ == '__main__':
+    # If .env exists locally, use that for environment variables
+    # In a docker image is built ignoring the .env so it can't appear in a container
+    if os.path.exists(".env"):
+        from dotenv import load_dotenv
+        load_dotenv(".env")
+
+
     if os.getenv('AUTH') is None:
         print("AUTH env variable is required can be [true, false]")
         exit(1)

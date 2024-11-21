@@ -373,7 +373,7 @@ async def description(name: str):
 
 
 @router.get("/mage/pipeline/templates", tags=["PIPELINES GET"])
-async def description(pipeline_type: str):
+async def templates(pipeline_type: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -392,16 +392,18 @@ async def description(pipeline_type: str):
         raise HTTPException(detail=response.json().get("error")["exception"], status_code=500)
 
     body = response.json()["custom_templates"]
+    print(body)
 
     templates = []
     for entry in body:
         pattern = r"\([\w\s_-]+\) "
-        if pipeline_type in entry["description"] or len(re.findall(pattern, entry["description"])) == 0:
-            templates.append({
-                "type": entry["block_type"],
-                "name": entry["template_uuid"],
-                "description": entry["description"].replace("(" + pipeline_type + ") ", "")
-            })
+        if entry["description"]:
+            if pipeline_type in entry["description"] or len(re.findall(pattern, entry["description"])) == 0:
+                templates.append({
+                    "type": entry["block_type"],
+                    "name": entry["template_uuid"],
+                    "description": entry["description"].replace("(" + pipeline_type + ") ", "")
+                })
 
     return JSONResponse(content=templates, status_code=200)
 
@@ -483,7 +485,7 @@ async def export_pipeline_cwl(pipeline_name: str):
     return response
 
 
-@router.get("/mage/pipeline/export")
+@router.get("/mage/pipeline/export", tags=["PIPELINE GET"])
 async def export_pipeline(pipeline_name: str):
     if token.check_token_expired():
         token.update_token()

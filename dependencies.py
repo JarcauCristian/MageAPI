@@ -7,6 +7,13 @@ from datetime import datetime
 
 class Token:
     def __init__(self) -> None:
+        # If .env exists locally, use that for environment variables
+        # In a docker image is built ignoring the .env so it can't appear in a container
+        if os.path.exists(".env"):
+            from dotenv import load_dotenv
+
+            load_dotenv(".env")
+
         if os.getenv("AUTH") == "false":
             self.token = "token"
             self.expires = 0.0
