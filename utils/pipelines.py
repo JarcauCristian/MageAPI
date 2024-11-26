@@ -26,21 +26,8 @@ def parse_pipelines(pipelines: List[Dict[str, Any]], contains: str):
 
 
 def parse_pipeline(pipeline: Dict[str, Any]):
-    blocks = []
-    for block in pipeline["blocks"]:
-        blocks.append({
-            "name": block["uuid"],
-            "type": block["type"],
-            "language": block["language"],
-            "content": block["content"],
-            "upstream_blocks": block["upstream_blocks"],
-            "downstream_blocks": block["downstream_blocks"],
-            "variables": list(dict(block.get("configuration")).keys())
-        })
-    parsed_pipeline = {
-        "name": pipeline.get("uuid"),
-        "type": pipeline.get("type"),
-        "description": pipeline.get("description"),
-        "blocks": blocks
-    }
+    parsed_pipeline = []
+    for block in pipeline[blocks]:
+        ...
     return parsed_pipeline
+

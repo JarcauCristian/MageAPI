@@ -96,19 +96,14 @@ async def pipeline_batch_status(pipeline_id: int):
 
 
 @router.get("/mage/pipelines", tags=["PIPELINES GET"])
-async def pipelines(tag: Optional[str] = None):
+async def pipelines():
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    valid_tags = ["train", "data_preprocessing", "streaming"]
-
-    if tag and tag not in valid_tags:
-        raise HTTPException(status_code=400, detail="tag parameter should be train, data_preprocessing or streaming.")
-
-    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?api_key={os.getenv("API_KEY")}' if not tag else os.getenv('BASE_URL') + f'/api/pipelines?tag[]={tag}&api_key={os.getenv("API_KEY")}'
-
+    pipelines_url = os.getenv('BASE_URL') + f'/api/pipelines?api_key={os.getenv("API_KEY")}'
+    
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {token.token}'
@@ -119,101 +114,17 @@ async def pipelines(tag: Optional[str] = None):
     if response.status_code != 200 or response.json().get("error") is not None:
         raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
-    names = []
-    for pipe in response.json()["pipelines"]:
-        if not tag:
-            if len(pipe["tags"]) > 0:
-                if pipe["tags"][0] not in valid_tags:
-                    continue
-            else:
-                continue
-        names.append(pipe.get("uuid"))
+    pipelines = []
+    for pipeline in response.json()["pipelines"]:
+        names.append({
+                         "name": pipelines.get("uuid"),
+                         "description": pipeline.get("description"),
+                         "type": pipeline.get("type"),
+                         "tags": ",".join(tag for tag in pipeline.get("tags")),
+                         "blocks": len(pipeline.get("blocks")),
+                     })
 
-    return JSONResponse(status_code=200, content=names)
-
-
-@router.get("/mage/pipelines/specific", tags=["PIPELINES GET"])
-async def specific_pipelines(contains: str, changed: bool = False):
-    cache_key = f"pipelines:{contains}"
-
-    if changed:
-        if token.check_token_expired():
-            token.update_token()
-        if token.token == "":
-            return JSONResponse(status_code=500, content="Could not get the token!")
-
-        url = f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}'
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token.token}"
-        }
-
-        response = requests.request("GET", url, headers=headers)
-
-        if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500,
-                                detail=response.json().get("error")["exception"])
-
-        if len(response.json().get("pipelines")) == 0:
-            return JSONResponse(status_code=200, content=[])
-
-        pipes = []
-        for pipeline in response.json().get("pipelines"):
-            resp = requests.request("GET", f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline.get("uuid")}?'
-                                           f'api_key={os.getenv("API_KEY")}', headers=headers)
-
-            if resp.status_code == 200:
-                if resp.json().get("error") is None:
-                    pipes.append(resp.json().get("pipeline"))
-
-        pipes = parse_pipelines(pipes, contains)
-
-        set_data_in_redis(cache_key, json.dumps(pipes), expire_time_seconds=60)
-
-        update_timestamp(cache_key)
-
-        return JSONResponse(status_code=200, content=pipes)
-
-    cached_data = get_data_from_redis(cache_key)
-    if cached_data and not is_data_stale(cache_key, expire_time_seconds=60):
-        return JSONResponse(status_code=200, content=json.loads(cached_data.decode()))
-
-    if token.check_token_expired():
-        token.update_token()
-    if token.token == "":
-        raise HTTPException(status_code=500, detail="Could not get the token!")
-
-    url = f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}'
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token.token}"
-    }
-
-    response = requests.request("GET", url, headers=headers)
-
-    if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500,
-                            detail=response.json().get("error")["exception"])
-
-    if len(response.json().get("pipelines")) == 0:
-        return JSONResponse(status_code=200, content=[])
-
-    pipes = []
-    for pipeline in response.json().get("pipelines"):
-        resp = requests.request("GET", f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline.get("uuid")}?'
-                                       f'api_key={os.getenv("API_KEY")}', headers=headers)
-
-        if resp.status_code == 200:
-            if resp.json().get("error") is None:
-                pipes.append(resp.json().get("pipeline"))
-
-    pipes = parse_pipelines(pipes, contains)
-
-    set_data_in_redis(cache_key, json.dumps(pipes), expire_time_seconds=60)
-
-    update_timestamp(cache_key)
-
-    return JSONResponse(status_code=200, content=pipes)
+    return JSONResponse(status_code=200, content=pipelines)
 
 
 @router.get("/mage/pipeline/read", tags=["PIPELINES GET"])
@@ -260,40 +171,6 @@ async def read_full_pipeline(pipeline_name: str):
             raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
 
         return JSONResponse(status_code=200, content=json.loads(response.content.decode('utf-8')))
-
-    raise HTTPException(status_code=400, detail="Pipeline name should not be empty!")
-
-
-@router.get("/mage/pipeline/read/predict/full", tags=["PIPELINES GET"])
-async def read_full_pipeline(model_name: str):
-    if token.check_token_expired():
-        token.update_token()
-    if token.token == "":
-        raise HTTPException(status_code=500, detail="Could not get the token!")
-
-    if model_name != "":
-        headers = {
-            "Authorization": f"Bearer {token.token}",
-            "Content-Type": "application/json",
-            "X-API-KEY": os.getenv("API_KEY")
-        }
-
-        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines?api_key={os.getenv("API_KEY")}',
-                                headers=headers)
-
-        if response.status_code != 200 or response.json().get("error") is not None:
-            raise HTTPException(status_code=500, detail=response.json().get("error")["exception"])
-
-        return_pipeline = None
-        for pipeline in response.json()["pipelines"]:
-            if model_name in pipeline["tags"]:
-                return_pipeline = pipeline
-                break
-
-        if return_pipeline is None:
-            raise HTTPException(status_code=404, detail="Could not find the pipeline you are looking for!")
-
-        return JSONResponse(status_code=200, content=return_pipeline)
 
     raise HTTPException(status_code=400, detail="Pipeline name should not be empty!")
 
