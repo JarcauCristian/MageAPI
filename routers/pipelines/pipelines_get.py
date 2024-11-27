@@ -116,8 +116,8 @@ async def pipelines():
 
     pipelines = []
     for pipeline in response.json()["pipelines"]:
-        names.append({
-                         "name": pipelines.get("uuid"),
+        pipelines.append({
+                         "name": pipeline.get("uuid"),
                          "description": pipeline.get("description"),
                          "type": pipeline.get("type"),
                          "tags": ",".join(tag for tag in pipeline.get("tags")),

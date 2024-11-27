@@ -172,7 +172,6 @@ if __name__ == '__main__':
         from dotenv import load_dotenv
         load_dotenv(".env")
 
-
     if os.getenv('AUTH') is None:
         print("AUTH env variable is required can be [true, false]")
         exit(1)
