@@ -34,7 +34,7 @@ def parse_pipeline(pipeline: Dict[str, Any]):
             "language": block["language"],
             "content": block["content"],
             "upstream_blocks": block["upstream_blocks"],
-            "downstream_blocks": block["downstream_blocks"],
+            "downstream_blocks": [b for b in block["downstream_blocks"] if "chart_for" not in b and "histogram_for" not in b],
             "variables": list(dict(block.get("configuration")).keys())
         })
     parsed_pipeline = {

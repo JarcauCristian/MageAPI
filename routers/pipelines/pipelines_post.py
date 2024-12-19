@@ -14,7 +14,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post("/mage/pipeline/create", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/{name}/create", tags=["PIPELINES POST"])
 async def pipeline_create(name: str, ptype: str):
     if token.check_token_expired():
         token.update_token()

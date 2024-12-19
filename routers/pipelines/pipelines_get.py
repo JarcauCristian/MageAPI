@@ -20,7 +20,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.get("/mage/pipeline/triggers", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/{name}/triggers", tags=["PIPELINES GET"])
 async def pipeline_triggers(name: str):
     if token.check_token_expired():
         token.update_token()
@@ -46,8 +46,8 @@ async def pipeline_triggers(name: str):
     return JSONResponse(status_code=200, content=returns)
 
 
-@router.get("/mage/pipeline/status/streaming", tags=["PIPELINES GET"])
-async def pipeline_streaming_status(pipeline_name: str):
+@router.get("/mage/pipeline/{name}/status/streaming", tags=["PIPELINES GET"])
+async def pipeline_streaming_status(name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -58,7 +58,7 @@ async def pipeline_streaming_status(pipeline_name: str):
         "Authorization": f"Bearer {token.token}",
     }
 
-    url = f"{os.getenv('BASE_URL')}/api/pipeline_runs?pipeline_uuid={pipeline_name}&api_key={os.getenv('API_KEY')}"
+    url = f"{os.getenv('BASE_URL')}/api/pipeline_runs?pipeline_uuid={name}&api_key={os.getenv('API_KEY')}"
 
     response = requests.request("GET", url, headers=headers)
 
@@ -69,7 +69,7 @@ async def pipeline_streaming_status(pipeline_name: str):
     return JSONResponse("active" if len(response.json()["pipeline_runs"]) != 0 else "inactive", status_code=200)
 
 
-@router.get("/mage/pipeline/status/batch", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/{pipeline_id}/status/batch", tags=["PIPELINES GET"])
 async def pipeline_batch_status(pipeline_id: int):
     if token.check_token_expired():
         token.update_token()
@@ -127,19 +127,19 @@ async def pipelines():
     return JSONResponse(status_code=200, content=pipelines)
 
 
-@router.get("/mage/pipeline/read", tags=["PIPELINES GET"])
-async def read_pipeline(pipeline_name: str):
+@router.get("/mage/pipeline/{name}", tags=["PIPELINES GET"])
+async def read_pipeline(name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    if pipeline_name != "":
+    if name != "":
         headers = {
             "Authorization": f"Bearer {token.token}"
         }
 
-        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
+        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
@@ -152,19 +152,19 @@ async def read_pipeline(pipeline_name: str):
     raise HTTPException(status_code=400, detail="Pipeline name should not be empty!")
 
 
-@router.get("/mage/pipeline/read/full", tags=["PIPELINES GET"])
-async def read_full_pipeline(pipeline_name: str):
+@router.get("/mage/pipeline/{name}/full", tags=["PIPELINES GET"])
+async def read_full_pipeline(name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    if pipeline_name != "":
+    if name != "":
         headers = {
             "Authorization": f"Bearer {token.token}"
         }
 
-        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
+        response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{name}?api_key='
                                 f'{os.getenv("API_KEY")}', headers=headers)
 
         if response.status_code != 200 or response.json().get("error") is not None:
@@ -175,8 +175,8 @@ async def read_full_pipeline(pipeline_name: str):
     raise HTTPException(status_code=400, detail="Pipeline name should not be empty!")
 
 
-@router.get("/mage/pipeline/history", tags=["PIPELINES GET"])
-async def pipeline_history(pipeline_name: str, limit: int = 30):
+@router.get("/mage/pipeline/{name}/history", tags=["PIPELINES GET"])
+async def pipeline_history(name: str, limit: int = 30):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -187,7 +187,7 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
         "Content-Type": "application/json"
     }
 
-    url = f'{os.getenv("BASE_URL")}/api/pipeline_runs?_limit={limit}&_offset=0&pipeline_uuid={pipeline_name}&disable_retries_grouping=true&api_key={os.getenv("API_KEY")}'
+    url = f'{os.getenv("BASE_URL")}/api/pipeline_runs?_limit={limit}&_offset=0&pipeline_uuid={name}&disable_retries_grouping=true&api_key={os.getenv("API_KEY")}'
 
     response = requests.request("GET", url, headers=headers)
 
@@ -227,7 +227,7 @@ async def pipeline_history(pipeline_name: str, limit: int = 30):
     return JSONResponse(returns, status_code=200)
 
 
-@router.get("/mage/pipeline/description", tags=["PIPELINES GET"])
+@router.get("/mage/pipeline/{name}/description", tags=["PIPELINES GET"])
 async def description(name: str):
     if token.check_token_expired():
         token.update_token()
@@ -285,8 +285,8 @@ async def templates(pipeline_type: str):
     return JSONResponse(content=templates, status_code=200)
 
 
-@router.get("/mage/pipeline/export/cwl", tags=["PIPELINES GET"])
-async def export_pipeline_cwl(pipeline_name: str):
+@router.get("/mage/pipeline/{name}/export/cwl", tags=["PIPELINES GET"])
+async def export_pipeline_cwl(name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
@@ -296,7 +296,7 @@ async def export_pipeline_cwl(pipeline_name: str):
         "Authorization": f"Bearer {token.token}"
     }
 
-    response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{pipeline_name}?api_key='
+    response = requests.get(f'{os.getenv("BASE_URL")}/api/pipelines/{name}?api_key='
                             f'{os.getenv("API_KEY")}', headers=headers)
 
     if response.status_code != 200 or response.json().get("error") is not None:
@@ -329,7 +329,7 @@ async def export_pipeline_cwl(pipeline_name: str):
             download_utils = True
             break
 
-    mtc = MageToCWL(sorted_data, pipeline_name, repository_name)
+    mtc = MageToCWL(sorted_data, name, repository_name)
     mtc.process()
     zip_buffer = io.BytesIO()
 
@@ -347,7 +347,7 @@ async def export_pipeline_cwl(pipeline_name: str):
                     try:
                         file_content = download_file(file_info["encoded_path"], token.token)
 
-                        zipf.writestr(pipeline_name + "/scripts/" + file_info["full_path"], file_content)
+                        zipf.writestr(name + "/scripts/" + file_info["full_path"], file_content)
 
                     except Exception as e:
                         print(f"Failed to download or add {file_info['full_path']} to zip: {str(e)}")
@@ -357,25 +357,25 @@ async def export_pipeline_cwl(pipeline_name: str):
     zip_buffer.seek(0)
 
     response = StreamingResponse(zip_buffer, media_type="application/x-zip-compressed")
-    response.headers["Content-Disposition"] = f"attachment; filename={pipeline_name}.zip"
+    response.headers["Content-Disposition"] = f"attachment; filename={name}.zip"
 
     return response
 
 
-@router.get("/mage/pipeline/export", tags=["PIPELINE GET"])
-async def export_pipeline(pipeline_name: str):
+@router.get("/mage/pipeline/{name}/export", tags=["PIPELINE GET"])
+async def export_pipeline(name: str):
     if token.check_token_expired():
         token.update_token()
     if token.token == "":
         raise HTTPException(status_code=500, detail="Could not get the token!")
 
-    pipeline_folder = get_folder(f"pipelines/{pipeline_name}", local_token=token.token)
+    pipeline_folder = get_folder(f"pipelines/{name}", local_token=token.token)
 
     if pipeline_folder is None:
-        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found!")
+        raise HTTPException(status_code=404, detail=f"Pipeline '{name}' not found!")
 
     file_contents = []
-    readme = f"# {' '.join(pipeline_name.split('_')).title()} configuration \n- Add the folder called **{pipeline_name}** inside the **pipelines** folder in MageAI."
+    readme = f"# {' '.join(name.split('_')).title()} configuration \n- Add the folder called **{name}** inside the **pipelines** folder in MageAI."
     metadata = None
     for entry in pipeline_folder:
         file_content = download_file(urllib.parse.quote(f'pipelines/{entry["encoded_path"]}'), token.token)
@@ -401,7 +401,7 @@ async def export_pipeline(pipeline_name: str):
     zip_buffer.seek(0)
 
     response = StreamingResponse(zip_buffer, media_type="application/x-zip-compressed")
-    response.headers["Content-Disposition"] = f"attachment; filename={pipeline_name}.zip"
+    response.headers["Content-Disposition"] = f"attachment; filename={name}.zip"
 
     return response
 
