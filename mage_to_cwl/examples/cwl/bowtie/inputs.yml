@@ -1,0 +1,5 @@
+export_bowtie_script: "export_bowtie.py"
+read_fasta_script: "read_fasta.py"
+scripts_folder:
+  class: Directory
+  path: ./scripts

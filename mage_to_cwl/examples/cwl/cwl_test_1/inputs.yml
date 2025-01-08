@@ -1,0 +1,5 @@
+get_file_script: "get_file.py"
+scripts_folder:
+  class: Directory
+  path: ./scripts
+wise_cloud_script: "wise_cloud.py"
