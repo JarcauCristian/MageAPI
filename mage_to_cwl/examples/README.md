@@ -12,4 +12,5 @@ This is a collection of Mage AI pipelines with their CWL counterparts to compare
 - Import the two zip files from the **mage** folder inside the Mage deployment.
 - Create a trigger for each of the imported pipelines
 - Install bowtie-build for the bowtie pipeline from here [Bowtie](https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.3.1/)
+- Change the *BASE_URL* variable from **main.py** to match the url of the local deployment of Mage AI
 - Run `python main.py`

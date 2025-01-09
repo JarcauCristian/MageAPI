@@ -49,17 +49,22 @@ def run_pipe(name: str, info: dict[str, Any]) -> None:
     response.raise_for_status()
 
     status = response.text
+    counter = 0
 
-    while status not in ["completed", "failed", "cancelled"]:
+    while status not in ['"completed"', '"failed"', '"cancelled"'] or counter < 60:
         response = requests.request("GET", url)
         if response.status_code == 200:
             status = response.text
+        if status == '"completed"':
+            break
+        counter += 1
 
 
 @time_wrapper
 def run_cwl(name: str):
     try:
-        subprocess.run(f"cwl/{name}/run.sh", check=True)
+        subprocess.run(["chmod", "+x", "run.sh"], cwd=f"cwl/{name}", check=True)
+        subprocess.run(f"./run.sh", cwd=f"cwl/{name}", check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error running Pipeline: {e}")
 
