@@ -1,11 +1,12 @@
 import os
 import json
+import httpx
 import random
 import string
 import requests
 from datetime import datetime
 from dependencies import Token
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
 from starlette.responses import JSONResponse
 from utils.models import Pipeline, Secret, Trigger, Variables, Tag
 
@@ -14,7 +15,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post("/mage/pipeline/create", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/create", tags=["PIPELINES", "POST"])
 async def pipeline_create(name: str, ptype: str):
     if token.check_token_expired():
         token.update_token()
@@ -48,7 +49,7 @@ async def pipeline_create(name: str, ptype: str):
     return JSONResponse(status_code=201, content="Pipeline Created")
 
 
-@router.post("/mage/pipeline/create/tag", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/create/tag", tags=["PIPELINES", "POST"])
 async def pipeline_create_tag(tag: Tag):
     if token.check_token_expired():
         token.update_token()
@@ -78,7 +79,7 @@ async def pipeline_create_tag(tag: Tag):
     return JSONResponse(status_code=201, content="Tag created successfully!")
 
 
-@router.post("/mage/pipeline/create/trigger", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/create/trigger", tags=["PIPELINES", "POST"])
 async def pipeline_create_trigger(trigger: Trigger):
     if token.check_token_expired():
         token.update_token()
@@ -126,7 +127,7 @@ async def pipeline_create_trigger(trigger: Trigger):
     return JSONResponse(status_code=200, content="Trigger created successfully!")
 
 
-@router.post("/mage/pipeline/run", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/run", tags=["PIPELINES", "POST"])
 async def run_pipeline(pipe: Pipeline):
     if token.check_token_expired():
         token.update_token()
@@ -158,7 +159,7 @@ async def run_pipeline(pipe: Pipeline):
     return JSONResponse(status_code=201, content="Pipeline Started Successfully!")
 
 
-@router.post("/mage/pipeline/variables", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/variables", tags=["PIPELINES", "POST"])
 async def create_variables(variables: Variables):
     if token.check_token_expired():
         token.update_token()
@@ -201,7 +202,43 @@ async def create_variables(variables: Variables):
     return JSONResponse(status_code=200, content="Variables added successfully!")
 
 
-@router.post("/mage/pipeline/secret", tags=["PIPELINES POST"])
+@router.post("/mage/pipeline/import", tags=["PIPELINES", "POST"])
+async def import_pipeline(file: UploadFile):
+    if file.content_type != "application/zip":
+        raise HTTPException(status_code=500, detail="Only zip files are allowed!")
+    
+    if token.check_token_expired():
+        token.update_token()
+    if token.token == "":
+        raise HTTPException(status_code=500, detail="Could not get the token!")
+
+    headers = {
+        "Authorization": f"Bearer {token.token}",
+        "accept": "application/json",
+    }
+
+    url = f"{os.getenv('BASE_URL')}/api/files?api_key={os.getenv('API_KEY')}"
+
+    file_content = await file.read()
+    
+    files = {
+        "file": (file.filename, file_content, file.content_type),
+        "json_root_body": (
+            None,
+            '{"api_key":"%s","dir_path":"","pipeline_zip":true,"overwrite":false}' % os.getenv('API_KEY'),
+        ),
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, files=files)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Error encountered when importing the pipeline!")
+
+    return JSONResponse(status_code=200, content="Pipeline imported sucessfully!")
+
+
+@router.post("/mage/pipeline/secret", tags=["PIPELINES", "POST"])
 async def create_secret(secret: Secret):
     if token.check_token_expired():
         token.update_token()

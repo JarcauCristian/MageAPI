@@ -11,7 +11,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.delete("/mage/pipeline/delete", tags=["PIPELINES DELETE"])
+@router.delete("/mage/pipeline/delete", tags=["PIPELINES", "DELETE"])
 async def delete_pipeline(name: str):
     if token.check_token_expired():
         token.update_token()
