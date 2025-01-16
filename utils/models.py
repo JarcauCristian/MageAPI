@@ -80,3 +80,10 @@ class Rename(BaseModel):
 class Validate(BaseModel):
     block_type: str
     content: str
+
+
+class FileCreate(BaseModel):
+    type: str
+    name: str
+    path: str
+    content: Optional[str] = None
