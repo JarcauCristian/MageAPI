@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from routers.websock import sock as websock
 from contextlib import asynccontextmanager
+from routers.files import files_post
 from routers.logs import logs_get
 from utils.models import Query, Server
 from pydantic import ValidationError
@@ -87,6 +88,8 @@ app.include_router(blocks_delete.router)
 app.include_router(logs_get.router)
 
 app.include_router(files_get.router)
+
+app.include_router(files_post.router)
 
 app.include_router(websock.router)
 

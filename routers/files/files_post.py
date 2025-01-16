@@ -1,12 +1,11 @@
-import datetime
-import json
 import os
+import io
+import httpx
 import requests
-from io import BytesIO
 from dependencies import Token
 from utils.models import FileCreate
 from fastapi import APIRouter, HTTPException
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse
 
 
 router = APIRouter()
@@ -51,5 +50,28 @@ async def create_file(content: FileCreate):
     elif content.type == "file":
         if content.content is None:
             raise HTTPException(status_code=400, detail="Type is file, content needs to be provided!")
-        
-        
+                
+        headers = {
+            "Authorization": f"Bearer {token.token}",
+            "accept": "application/json",
+        }
+
+        url = f"{os.getenv('BASE_URL')}/api/files?api_key={os.getenv('API_KEY')}"
+
+        buffer = io.BytesIO(content.content.encode('utf-8'))
+
+        files = {
+            "file": ("config.yaml", buffer, "text/yaml"),
+            "json_root_body": (
+                None,
+                '{"api_key":"%s","dir_path":"%s","pipeline_zip":false,"overwrite":false}' % (os.getenv('API_KEY'), content.path),
+            ),
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, files=files)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Error encountered when importing the file!")
+
+        return JSONResponse(status_code=200, content="File imported sucessfully!")
