@@ -36,7 +36,7 @@ async def create_file(content: FileCreate):
             "api_key": os.getenv("API_KEY"),
             "folder": {
                 "name": content.name,
-                "overwrite": False,
+                "overwrite": content.overwrite,
                 "path": content.path
             }
         }
@@ -60,11 +60,12 @@ async def create_file(content: FileCreate):
 
         buffer = io.BytesIO(content.content.encode('utf-8'))
 
+        overwrite = "true" if content.overwrite else "false"
         files = {
             "file": ("config.yaml", buffer, "text/yaml"),
             "json_root_body": (
                 None,
-                '{"api_key":"%s","dir_path":"%s","pipeline_zip":false,"overwrite":false}' % (os.getenv('API_KEY'), content.path),
+                '{"api_key":"%s","dir_path":"%s","pipeline_zip":false,"overwrite":%s}' % (os.getenv('API_KEY'), content.path, overwrite),
             ),
         }
 

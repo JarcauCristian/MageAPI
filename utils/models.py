@@ -86,4 +86,5 @@ class FileCreate(BaseModel):
     type: str
     name: str
     path: str
+    overwrite: Optional[bool] = False
     content: Optional[str] = None
