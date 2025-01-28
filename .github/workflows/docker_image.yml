@@ -21,6 +21,9 @@ jobs:
       #
     steps:
       - uses: actions/checkout@v4
+      
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@v3.88.2
 
       - name: Build image
         run: docker build . --file Dockerfile --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
