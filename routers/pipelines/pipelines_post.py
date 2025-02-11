@@ -15,7 +15,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post("/mage/pipeline/create", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/create", tags=["PIPELINES POST"])
 async def pipeline_create(name: str, ptype: str):
     if token.check_token_expired():
         token.update_token()
@@ -49,7 +49,7 @@ async def pipeline_create(name: str, ptype: str):
     return JSONResponse(status_code=201, content="Pipeline Created")
 
 
-@router.post("/mage/pipeline/create/tag", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/create/tag", tags=["PIPELINES POST"])
 async def pipeline_create_tag(tag: Tag):
     if token.check_token_expired():
         token.update_token()
@@ -79,7 +79,7 @@ async def pipeline_create_tag(tag: Tag):
     return JSONResponse(status_code=201, content="Tag created successfully!")
 
 
-@router.post("/mage/pipeline/create/trigger", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/create/trigger", tags=["PIPELINES POST"])
 async def pipeline_create_trigger(trigger: Trigger):
     if token.check_token_expired():
         token.update_token()
@@ -127,7 +127,7 @@ async def pipeline_create_trigger(trigger: Trigger):
     return JSONResponse(status_code=200, content="Trigger created successfully!")
 
 
-@router.post("/mage/pipeline/run", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/run", tags=["PIPELINES POST"])
 async def run_pipeline(pipe: Pipeline):
     if token.check_token_expired():
         token.update_token()
@@ -159,7 +159,7 @@ async def run_pipeline(pipe: Pipeline):
     return JSONResponse(status_code=201, content="Pipeline Started Successfully!")
 
 
-@router.post("/mage/pipeline/variables", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/variables", tags=["PIPELINES POST"])
 async def create_variables(variables: Variables):
     if token.check_token_expired():
         token.update_token()
@@ -202,7 +202,7 @@ async def create_variables(variables: Variables):
     return JSONResponse(status_code=200, content="Variables added successfully!")
 
 
-@router.post("/mage/pipeline/import", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/import", tags=["PIPELINES POST"])
 async def import_pipeline(file: UploadFile):
     if file.content_type != "application/zip":
         raise HTTPException(status_code=500, detail="Only zip files are allowed!")
@@ -238,7 +238,7 @@ async def import_pipeline(file: UploadFile):
     return JSONResponse(status_code=200, content="Pipeline imported sucessfully!")
 
 
-@router.post("/mage/pipeline/secret", tags=["PIPELINES", "POST"])
+@router.post("/mage/pipeline/secret", tags=["PIPELINES POST"])
 async def create_secret(secret: Secret):
     if token.check_token_expired():
         token.update_token()

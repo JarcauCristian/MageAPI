@@ -1,15 +1,15 @@
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form, UploadFile, HTTPException
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
+from routers.files import files_get, files_post, files_delete
+from scalar_fastapi import get_scalar_api_reference
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from routers.websock import sock as websock
 from contextlib import asynccontextmanager
-from routers.files import files_post
 from routers.logs import logs_get
 from utils.models import Query, Server
 from pydantic import ValidationError
-from routers.files import files_get
 from routers.validate import sock
 from rag.ingester import Ingester
 from rag.rag import RAGPipeline
@@ -59,7 +59,7 @@ async def lifespan(_):
     del rag, ing, lint
 
 
-app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs", lifespan=lifespan)
+app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs", lifespan=lifespan, title="MageAPI")
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,14 +91,24 @@ app.include_router(files_get.router)
 
 app.include_router(files_post.router)
 
+app.include_router(files_delete.router)
+
 app.include_router(websock.router)
 
 app.include_router(sock.router)
 
 
-@app.get("/mage", tags=["ENTRY POINT"])
+@app.get("/mage")
 async def entry():
     return JSONResponse(content="Hello from server!", status_code=200)
+
+
+@app.get("/mage/scalar")
+async def scalar_docs():
+    return get_scalar_api_reference(
+        openapi_url=app.openapi_url,
+        title=app.title
+    )
 
 
 @app.post("/mage/server/set", tags=["SERVER"])

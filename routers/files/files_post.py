@@ -13,7 +13,7 @@ router = APIRouter()
 token = Token()
 
 
-@router.post("/mage/files/create")
+@router.post("/mage/files/create", tags=["FILES POST"])
 async def create_file(content: FileCreate):
     if token.check_token_expired():
         token.update_token()

@@ -88,3 +88,8 @@ class FileCreate(BaseModel):
     path: str
     overwrite: Optional[bool] = False
     content: Optional[str] = None
+
+
+class FileDelete(BaseModel):
+    type: str
+    name: str
