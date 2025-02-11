@@ -90,7 +90,7 @@ async def pipeline_create_trigger(trigger: Trigger):
         raise HTTPException(status_code=400, detail="Type can be only schedule and api!")
     
     if trigger.trigger_type == "time":
-        if trigger.interval not in ["hourly", "daily", "monthly"]:
+        if trigger.interval not in ["once", "hourly", "daily", "monthly"]:
             raise HTTPException(status_code=400, detail="Interval can be only hourly, daily and monthly!")
 
     url = f'{os.getenv("BASE_URL")}/api/pipelines/{trigger.name}/pipeline_schedules?api_key={os.getenv("API_KEY")}'
