@@ -37,23 +37,26 @@ async def delete_file(delete: FileDelete):
     if response.status_code != 200 or response.json().get("error") is not None:
         raise HTTPException(status_code=500, detail="Error fetching files!")
 
-    def find_path(structure: list[dict[Any, Any]], path: str) -> str:
+    def find_all_paths(structure: list[dict], current_path: str, target: str) -> list[str]:
+        paths = []
         for item in structure:
-            if item.get("name") == delete.name:
-                return path
-            elif item.get("children"):
-                result = find_path(item.get("children"), path=path + "%2F" + item["name"])
-                if result is not None:
-                    return result
-        return None
+            new_path = f"{current_path}/{item['name']}"
+            if item.get("name") == target:
+                if (delete.type == "folders" and item.get("children")) or (delete.type == "files" and not item.get("children")):
+                    paths.append(new_path)
+            if item.get("children"):
+                paths.extend(find_all_paths(item.get("children"), new_path, target))
+        return paths
 
-    path = find_path(response.json()["files"][0]["children"], "default_repo") + "%2F" + delete.name
-    
-    url = f"{os.getenv('BASE_URL')}/api/{delete.type}/{path}?api_key={os.getenv('API_KEY')}"
+    all_paths = find_all_paths(response.json()["files"][0]["children"], "default_repo", delete.name)
 
-    response = requests.request("DELETE", url, headers=headers)
+    for path in all_paths:
+        formatted_path = path.replace("/", "%2F")   
+        url = f"{os.getenv('BASE_URL')}/api/{delete.type}/{formatted_path}?api_key={os.getenv('API_KEY')}"
 
-    if response.status_code != 200 or response.json().get("error") is not None:
-        raise HTTPException(status_code=500, detail="Error deleting file!")
+        response = requests.request("DELETE", url, headers=headers)
 
-    return JSONResponse(f"{delete.type.capitalize()[:-1]} {delete.name} deleted successfully!", status_code=200)
+        if response.status_code != 200 or response.json().get("error") is not None:
+            raise HTTPException(status_code=500, detail="Error deleting file!")
+
+    return JSONResponse(f"Successfully deleted all instances of {delete.name}!", status_code=200)
