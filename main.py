@@ -1,65 +1,24 @@
 from routers.pipelines import pipelines_get, pipelines_post, pipelines_put, pipelines_delete
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form, UploadFile, HTTPException
+from fastapi import FastAPI, WebSocket, Form, UploadFile, HTTPException
 from routers.blocks import blocks_get, blocks_post, blocks_put, blocks_delete
+from rag.rag import retriever, run_workflow, node_description, apply_ruff
 from routers.files import files_get, files_post, files_delete
 from scalar_fastapi import get_scalar_api_reference
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 from routers.websock import sock as websock
-from contextlib import asynccontextmanager
-from routers.logs import logs_get
 from utils.models import Query, Server
+from langchain.schema import Document
 from pydantic import ValidationError
+from routers.logs import logs_get
 from routers.validate import sock
-from rag.ingester import Ingester
-from rag.rag import RAGPipeline
-from utils.linter import Linter
+from rag.data import add_document
 from typing import Annotated
-from ollama import Client
-import rag.utils as utils
-from pathlib import Path
-import chromadb
+import asyncio
 import uvicorn
 import os
 
-
-@asynccontextmanager
-async def lifespan(_):
-    global ing, rag, lint
-    ollama_client = Client(os.getenv("OLLAMA_URL"))
-    db_path_exists = os.path.exists("db")
-    chroma_client = chromadb.PersistentClient("./db")
-    ing = Ingester(ollama_client, chroma_client, "nomic-embed-text:latest", "nomic-ai/nomic-embed-text-v1", 1500)
-    common_aliases = {
-        "pd": "pandas",
-        "np": "numpy",
-        "plt": "matplotlib.pyplot",
-        "sns": "seaborn",
-        "nn": "torch.nn"
-    }
-
-    lint = Linter(common_aliases)
-
-    if not db_path_exists:
-        for p in Path("./blocks").glob("*"):
-            if p.is_dir() and p.name in ["loaders", "transformers", "exporters", "configs"]:
-                if p.name == "loaders":
-                    utils.add_loaders(p.__str__(), ing)
-                elif p.name == "transformers":
-                    utils.add_transformers(p.__str__(), ing)
-                elif p.name == "exporters":
-                    utils.add_exporters(p.__str__(), ing)
-                elif p.name == "configs":
-                    utils.add_configs(p.__str__(), ing)
-
-    rag = RAGPipeline(os.getenv("OLLAMA_URL"), "llama3.1:latest", ollama_client,
-                      "nomic-embed-text:latest", chroma_client, "etl_pipelines_collection")
-
-    yield
-    del rag, ing, lint
-
-
-app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs", lifespan=lifespan, title="MageAPI")
+app = FastAPI(openapi_url="/mage/openapi.json", docs_url="/mage/docs", title="MageAPI")
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,55 +87,57 @@ async def server_set(server: Server):
 @app.post("/mage/rag/add", tags=["BLOCKS POST"])
 async def add_rag(block_type: Annotated[str, Form()],
                   name: Annotated[str, Form()],
-                  description: Annotated[str, Form()],
                   file: UploadFile):
     file_data = file.file.read().decode("utf-8").replace("\n", "\\n")
 
-    try:
-        ing.ingest(file_data, f"{name}.py", block_type, description, os.getenv("CHROMA_COLLECTION"))
-    except:
-        raise HTTPException(detail="Encountered an error when ingesting data in the RAG. ", status_code=500)
+    result = add_document(retriever, Document(file_data, metadata={"source": "orchestrator", "block_type": block_type}))
+
+    if not result and len(result) == 0:
+        raise HTTPException(status_code=500, detail="Ingestion failed!")
 
     return JSONResponse(content="Ingestion completed successfully!", status_code=200)
 
 
 @app.websocket("/mage/block/generate")
-async def socket(websocket: WebSocket):
+async def rag_endpoint(websocket: WebSocket):
     await websocket.accept()
-    validated_data = None
+
+    data = await websocket.receive_json()
+
     try:
-        while True:
-            data = await websocket.receive_json()
-            validated_data = Query(**data)
-
-            if validated_data.block_type not in ["loader", "transformer", "exporter"]:
-                await websocket.send_json({"detail": "Invalid block_type. Only loader, transformer and exporter are allowed!"})
-            else:
-                result_block = await get_model_response(validated_data)
-
-                if result_block == "":
-                    await websocket.send_json({"error": "Could not receive generated block from LLM. Please try again!"})
-                else:
-                    linted_code = lint.process(result_block)
-                    await websocket.send_text(linted_code)
-    except WebSocketDisconnect:
-        await websocket.send_json({"detail": "Websocket disconnect successfully!"})
+        data = Query(**data)
     except ValidationError:
-        await websocket.send_json({"detail": "JSON validation error!"})
+        await websocket.send_json({
+                                      "message": "Failed parsing the input.",
+                                      "generation": None,
+                                      "generation_status": False
+                                  })
+        await websocket.close(code=1003, reason="Input data should be a JSON that contains only one key called question!")
 
+    question = data.question
 
-async def get_model_response(query: Query) -> str:
-    block = f"[block_type={query.block_type}] {query.description}"
-    result = rag.invoke(block)
+    async for (message, is_final) in run_workflow(question):
+        if not is_final:
+            node_desc = node_description(message) if node_description(message) is not None else message
+            returns = {
+                "message": node_desc,
+                "generation": None,
+                "generation_status": is_final
+            }
+        else:
+            formatted_code = apply_ruff(message)
+            returns = {
+                "message": None,
+                "generation": formatted_code,
+                "generation_status": is_final
+            }
 
-    print(result)
+        await websocket.send_json(returns)
 
-    code = utils.preprocess_string(result)
+        await asyncio.sleep(0.0)
 
-    if code == "":
-        return ""
+    await websocket.close()
 
-    return code
 
 if __name__ == '__main__':
     # If .env exists locally, use that for environment variables
@@ -205,4 +166,4 @@ if __name__ == '__main__':
 
     os.environ["API_KEY"] = "zkWlN0PkIKSN0C11CfUHUj84OT5XOJ6tDZ6bDRO2"
 
-    uvicorn.run(app, host="0.0.0.0")
+    uvicorn.run(app, host="0.0.0.0", ws_ping_timeout=1000.0)

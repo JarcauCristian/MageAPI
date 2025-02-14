@@ -62,8 +62,7 @@ class UpdateTrigger(BaseModel):
 
 
 class Query(BaseModel):
-    block_type: str
-    description: str
+    question: str
 
 
 class Server(BaseModel):
